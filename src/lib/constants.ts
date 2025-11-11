@@ -63,3 +63,22 @@ export const CELL_REVEAL_DELAY = 50;
  * Number of recent sessions to consider for pattern evolution.
  */
 export const EVOLUTION_HISTORY_SIZE = 5;
+
+// ============================================================================
+// MUTATION ENGINE CONSTANTS
+// ============================================================================
+
+/**
+ * Branching occurs every N depths.
+ */
+export const BRANCHING_INTERVAL = 3;
+
+/**
+ * Number of branches to generate at branching points.
+ */
+export const BRANCH_COUNT = 3;
+
+/**
+ * Minimum cluster length to detect in patterns.
+ */
+export const MIN_CLUSTER_LENGTH = 2;

@@ -1,6 +1,7 @@
 import Dexie, { Table } from 'dexie';
-import { RecursionSession, SessionStats } from './types';
+import { RecursionSession, SessionStats, Pattern, RecursionDepth } from './types';
 import { EVOLUTION_HISTORY_SIZE } from './constants';
+import { evolvePattern as evolvePatternEngine } from './mutationEngine';
 
 /**
  * IndexedDB database for persisting recursive sessions.
@@ -45,33 +46,66 @@ export const getSessionStats = async (): Promise<SessionStats> => {
 };
 
 // ============================================================================
-// PATTERN EVOLUTION ENGINE
+// DECAY CALCULATION
+// ============================================================================
+
+/**
+ * Calculate decay factor for a session based on time since last access.
+ * Fresh sessions have factor of 1.0, older sessions decay toward 0.5.
+ * 
+ * @param lastAccessed - Timestamp of last access
+ * @param currentTime - Current timestamp (defaults to now)
+ * @returns Decay factor between 0.5 and 1.0
+ */
+export const calculateDecayFactor = (lastAccessed: number, currentTime: number = Date.now()): number => {
+  const daysSince = (currentTime - lastAccessed) / (1000 * 60 * 60 * 24);
+  
+  // Exponential decay: starts at 1.0, decays to 0.5 over 7 days
+  const decayRate = 0.1; // ~10% per day
+  const decayed = Math.exp(-decayRate * daysSince);
+  
+  // Clamp between 0.5 and 1.0 (never fully disappear)
+  return Math.max(0.5, Math.min(1.0, decayed));
+};
+
+// ============================================================================
+// PATTERN EVOLUTION ENGINE (Wrapper)
 // ============================================================================
 
 /**
  * Evolve a pattern based on the user's historical behavior.
- * Analyzes recent sessions to determine mutation strategy.
+ * This is a wrapper around the sophisticated mutation engine.
  * 
  * @param currentPattern - The pattern to evolve
+ * @param depth - Current recursion depth
+ * @param enableBranching - Whether to enable branching logic
  * @returns A new mutated pattern
  */
-export const evolvePattern = async (currentPattern: number[]): Promise<number[]> => {
+export const evolvePattern = async (
+  currentPattern: Pattern,
+  depth: RecursionDepth,
+  enableBranching: boolean = false
+): Promise<Pattern> => {
   const recentSessions = await db.sessions
     .orderBy('timestamp')
     .reverse()
     .limit(EVOLUTION_HISTORY_SIZE)
     .toArray();
 
-  if (recentSessions.length === 0) return currentPattern;
-
-  // Calculate which cell to mutate based on historical pattern data
-  // This creates a deterministic but seemingly "intelligent" evolution
-  const mutation = recentSessions
-    .flatMap(s => s.patterns)
-    .reduce((acc, val) => acc + (val % 3), 0) % currentPattern.length;
-
-  const evolved = [...currentPattern];
-  evolved[mutation] = (evolved[mutation] + 1) % 4;
+  // Aggregate recent patterns
+  const recentPatterns = recentSessions.flatMap(s => s.patterns);
   
-  return evolved;
-}
+  // Calculate average decay factor from recent sessions
+  const avgDecayFactor = recentSessions.length > 0
+    ? recentSessions.reduce((sum, s) => sum + s.decayFactor, 0) / recentSessions.length
+    : 1.0;
+
+  // Use the sophisticated mutation engine
+  return evolvePatternEngine(
+    currentPattern,
+    depth,
+    recentPatterns,
+    avgDecayFactor,
+    enableBranching
+  );
+};

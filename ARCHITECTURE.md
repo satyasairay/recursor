@@ -237,16 +237,168 @@ const hue = BASE_HUE + depth * HUE_SHIFT_PER_DEPTH;
 
 ### Deleted Interfaces/Types
 - ❌ `MemoryNode` - Was defined but never used
-- ❌ `decayFactor` field in `RecursionSession` - Planned feature, never implemented
 
 ### Deleted Functions
-- ❌ `calculateDecay()` - Memory decay system (future feature)
-
-### Deleted Variables
 - ❌ `pulsePhase` in `RecursionPortal` - Set but never read
 
 ### Deleted Database Tables
 - ❌ `memories` table - Was created but never populated
+
+---
+
+## 🧠 Phase 1: True Recursive Mutation (The Engine Brain)
+
+### Non-Linear Mutation Engine
+
+The mutation engine (`src/lib/mutationEngine.ts`) transforms RECURSOR from "UI with memory" to "recursive logic system."
+
+#### Core Algorithms
+
+**1. Entropy Analysis**
+- Calculates Shannon entropy: `-Σ(p * log₂(p))`
+- Range: 0 (pure order) to 2 (pure chaos)
+- Used to determine mutation strategy:
+  - High entropy → preserve chaos
+  - Low entropy → break patterns
+
+**2. Cluster Detection**
+- Identifies repeated sequences in patterns
+- Detects structure: `[1,2,1,2]` has cluster `[1,2]` appearing 2x
+- Cluster density: 0 (no structure) to 1 (highly structured)
+- Strategy:
+  - High density → disrupt clusters
+  - Low density → preserve randomness
+
+**3. Mutation Weights**
+Calculated from multiple factors:
+```typescript
+strength = depthWeight × entropyWeight × decayWeight
+chaos = (1 - decayFactor) × 0.3 + (depth × 0.05)
+```
+
+- **Depth Weight**: 1 + (depth × 0.2), max 2.5
+- **Entropy Weight**: 1 + (0.5 - normalizedEntropy)
+- **Cluster Weight**: 1 + (clusterDensity × 0.3)
+- **Decay Weight**: decayFactor (0.5-1.0)
+
+**4. Branching Evolution**
+- Activates every 3 depths (depth % 3 === 0)
+- Generates 2-3 possible pattern evolutions
+- Each branch applies different mutation intensities
+- Selection uses "affinity" to recent patterns:
+  - Rewards `diff === 1` (similar but different) most
+  - Rewards `diff === 0` (identical) least
+  - Selects deterministically from top 80% affinities
+
+**5. Cluster-Aware Mutation**
+Two strategies:
+- **Preserve**: Mutate only non-cluster cells
+- **Disrupt**: Target cluster cells specifically
+
+Applied based on cluster density threshold (0.5).
+
+**6. Chaos Injection**
+When `chaos > 0.2`:
+- Applies random-feeling mutations
+- Actually deterministic (based on pattern state)
+- Amount scales with chaos level
+
+#### Decay System
+
+**Purpose**: Time-based influence on pattern evolution
+
+**Formula**: 
+```typescript
+decay = Math.exp(-0.1 × daysSince)
+clamped between 0.5 and 1.0
+```
+
+**Behavior**:
+- Fresh session: decay = 1.0 (full influence)
+- 7 days old: decay ≈ 0.5 (half influence)
+- Never below 0.5 (memories persist)
+
+**Effect on Mutations**:
+- High decay (fresh) → predictable evolution
+- Low decay (old) → more chaotic evolution
+- Updates on each portal entry
+
+#### Visual Feedback
+
+**Depth Indicator Enhanced**:
+Shows real-time mutation state:
+- Entropy level (0-1)
+- Cluster count
+- Chaos percentage
+- Branching warnings
+
+**Branching Points**:
+When depth + 1 is divisible by 3:
+```
+⚠ BRANCHING POINT DETECTED ⚠
+```
+
+### Key Files
+
+**`src/lib/mutationEngine.ts`**
+- 500+ lines of mutation logic
+- Exported functions:
+  - `calculateEntropy()`
+  - `detectClusters()`
+  - `calculateMutationWeights()`
+  - `generateBranches()`
+  - `selectBranch()`
+  - `mutateWithClusters()`
+  - `evolvePattern()` (main)
+  - `analyzePattern()` (diagnostic)
+
+**`src/lib/recursionDB.ts`**
+- Wrapper function `evolvePattern()` 
+- Aggregates session history
+- Calculates average decay factor
+- Calls mutation engine with context
+
+**`src/components/RecursiveEngine.tsx`**
+- Integrates mutation engine
+- Updates decay on portal entry
+- Enables branching at correct depths
+- Displays mutation stats
+
+### Tuning Parameters
+
+Balance between chaos and order:
+
+| Parameter | Value | Effect |
+|-----------|-------|--------|
+| `decayRate` | 0.1 | Decay speed per day |
+| `minDecay` | 0.5 | Minimum influence |
+| `depthMultiplier` | 0.2 | Depth → mutation strength |
+| `maxDepthWeight` | 2.5 | Maximum depth amplification |
+| `chaosBase` | 0.3 | Base chaos from decay |
+| `chaosDepthRate` | 0.05 | Chaos increase per depth |
+| `branchingInterval` | 3 | Depths between branching |
+| `branchCount` | 2-3 | Evolutions per branch |
+| `affinityThreshold` | 0.8 | Top % for branch selection |
+
+### Pattern Evolution Flow
+
+```mermaid
+graph TD
+    A[User Enters Portal] --> B[Calculate Decay Factor]
+    B --> C[Fetch Recent Sessions]
+    C --> D[Aggregate Pattern History]
+    D --> E[Calculate Entropy]
+    E --> F[Detect Clusters]
+    F --> G[Calculate Mutation Weights]
+    G --> H{Branching Depth?}
+    H -->|Yes| I[Generate 3 Branches]
+    I --> J[Calculate Affinity Scores]
+    J --> K[Select Best Branch]
+    H -->|No| L[Cluster-Aware Mutation]
+    L --> M[Apply Chaos Injection]
+    K --> N[Return Evolved Pattern]
+    M --> N
+```
 
 ---
 
@@ -275,16 +427,29 @@ If re-implementing decay:
 
 ---
 
-## ✅ Phase 0 Deliverables Complete
+## ✅ Phase 0 & 1 Deliverables Complete
 
+### Phase 0: Foundation ✅
 - ✅ Pattern data structure finalized (flat array)
 - ✅ Cell concept clearly defined (0-3 states)
-- ✅ Unused variables cleaned up (decayFactor, MemoryNode, pulsePhase)
+- ✅ Unused variables cleaned up (MemoryNode, pulsePhase)
 - ✅ Recursion vocabulary documented
 - ✅ Type system centralized in `types.ts`
 - ✅ Constants extracted to `constants.ts`
 - ✅ All code commented with clear intent
 
-**Foundation Status:** 🟢 STABLE
+### Phase 1: Mutation Engine ✅
+- ✅ Non-linear mutation engine implemented
+- ✅ Entropy calculation (Shannon entropy)
+- ✅ Cluster detection (repeated sequences)
+- ✅ Decay factor system (time-based influence)
+- ✅ Depth-weighted mutations
+- ✅ Branching evolution (every 3 depths)
+- ✅ Mutation weights (strength + chaos)
+- ✅ Visual feedback (entropy, clusters, chaos %)
+- ✅ Cluster-aware mutation strategies
 
-Ready for Phase 1+ features (audio, branching, achievements, etc.).
+**Foundation Status:** 🟢 STABLE
+**Mutation Engine Status:** 🟢 OPERATIONAL
+
+Ready for Phase 2+ features (audio, achievements, export visualizations, etc.).

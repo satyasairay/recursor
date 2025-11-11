@@ -33,6 +33,34 @@ export interface Cell {
 
 export type CellState = 0 | 1 | 2 | 3;
 
+// ============================================================================
+// MUTATION ENGINE TYPES
+// ============================================================================
+
+/**
+ * CLUSTER: A repeated sequence detected within a pattern.
+ * Used for intelligent mutation that preserves or disrupts structure.
+ */
+export interface PatternCluster {
+  sequence: number[];
+  positions: number[];  // Starting positions of each occurrence
+  length: number;       // Length of the repeating sequence
+  frequency: number;    // How many times it appears
+}
+
+/**
+ * MUTATION WEIGHTS: Parameters that control pattern evolution behavior.
+ * Calculated based on depth, entropy, clusters, and decay.
+ */
+export interface MutationWeights {
+  strength: number;         // Overall mutation intensity (0-2.5)
+  chaos: number;            // Randomness level (0-1)
+  depthInfluence: number;   // How much depth affects mutation
+  entropyInfluence: number; // How much entropy affects mutation
+  clusterInfluence: number; // How much clustering affects mutation
+  decayInfluence: number;   // How much decay affects mutation
+}
+
 /**
  * DEPTH: How many recursive layers deep the user has descended.
  * Each portal entry increases depth by 1.
@@ -84,6 +112,7 @@ export interface RecursionSession {
   decisions: string[];
   patterns: number[]; // Flattened history of all pattern states
   completed: boolean;
+  decayFactor: number; // Time-based influence factor (0.5-1.0, where 1 = fresh)
   metadata: SessionMetadata;
 }
 

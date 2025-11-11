@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PatternGrid } from './PatternGrid';
 import { RecursionPortal } from './RecursionPortal';
-import { db, evolvePattern } from '@/lib/recursionDB';
+import { db, evolvePattern, calculateDecayFactor } from '@/lib/recursionDB';
 import { Button } from './ui/button';
 import { RecursionSession, Pattern } from '@/lib/types';
 import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } from '@/lib/constants';
+import { analyzePattern } from '@/lib/mutationEngine';
 
 export const RecursiveEngine = () => {
   const [depth, setDepth] = useState(0);
@@ -22,12 +23,14 @@ export const RecursiveEngine = () => {
   }, []);
 
   const initSession = async () => {
+    const now = Date.now();
     const session: RecursionSession = {
-      timestamp: Date.now(),
+      timestamp: now,
       depth: 0,
       decisions: [],
       patterns: [],
       completed: false,
+      decayFactor: 1.0, // Fresh session
       metadata: {
         duration: 0,
         interactionCount: 0,
@@ -37,7 +40,7 @@ export const RecursiveEngine = () => {
 
     const id = await db.sessions.add(session);
     setSessionId(id);
-    setSessionStart(Date.now());
+    setSessionStart(now);
   };
 
   const handleEnterPortal = async () => {
@@ -46,8 +49,20 @@ export const RecursiveEngine = () => {
     setIsTransitioning(true);
     setShowPortal(false);
 
-    // Evolve pattern based on history
-    const evolved = await evolvePattern(pattern);
+    // Update decay factor for current session
+    if (sessionId) {
+      const session = await db.sessions.get(sessionId);
+      if (session) {
+        const currentDecay = calculateDecayFactor(session.timestamp);
+        await db.sessions.update(sessionId, { decayFactor: currentDecay });
+      }
+    }
+
+    // Enable branching every 3 depths
+    const enableBranching = (depth + 1) % 3 === 0 && depth > 0;
+
+    // Evolve pattern using sophisticated mutation engine
+    const evolved = await evolvePattern(pattern, depth, enableBranching);
     
     setTimeout(() => {
       setPattern(evolved);
@@ -112,13 +127,25 @@ export const RecursiveEngine = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
-      {/* Depth indicator */}
+      {/* Depth indicator with mutation stats */}
       <motion.div
-        className="absolute top-8 left-8 font-mono text-sm text-muted-foreground"
+        className="absolute top-8 left-8 font-mono text-xs text-muted-foreground space-y-1"
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 3, repeat: Infinity }}
       >
-        RECURSION DEPTH: {depth}
+        <div>RECURSION DEPTH: {depth}</div>
+        {depth > 0 && (() => {
+          const analysis = analyzePattern(pattern, depth, 1.0);
+          return (
+            <>
+              <div className="text-[10px] opacity-70">
+                ENTROPY: {analysis.normalizedEntropy.toFixed(2)} | 
+                CLUSTERS: {analysis.clusterCount} | 
+                CHAOS: {(analysis.mutationWeights.chaos * 100).toFixed(0)}%
+              </div>
+            </>
+          );
+        })()}
       </motion.div>
 
       {/* Reset button */}
@@ -154,16 +181,27 @@ export const RecursiveEngine = () => {
                 isActive={!isTransitioning}
               />
 
-              {depth > 0 && (
-                <motion.div
-                  className="text-center text-muted-foreground font-mono text-sm"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  Pattern complete. Descend deeper?
-                </motion.div>
-              )}
+              {depth > 0 && (() => {
+                const analysis = analyzePattern(pattern, depth, 1.0);
+                const willBranch = (depth + 1) % 3 === 0;
+                return (
+                  <motion.div
+                    className="text-center space-y-2"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <div className="text-muted-foreground font-mono text-sm">
+                      Pattern complete. Descend deeper?
+                    </div>
+                    {willBranch && (
+                      <div className="text-primary font-mono text-xs">
+                        ⚠ BRANCHING POINT DETECTED ⚠
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })()}
             </motion.div>
           ) : (
             <motion.div
