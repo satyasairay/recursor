@@ -2,23 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>recurse-reflections</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>RECURSOR - Recursive Cognition Engine</title>
+    <meta name="description" content="An experimental progressive web app exploring recursive thinking, pattern recognition, and cognitive evolution through mysterious interaction" />
+    <meta name="author" content="RECURSOR" />
+    <meta name="theme-color" content="#0a0814" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
 
-    <meta property="og:title" content="recurse-reflections" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="RECURSOR - Recursive Cognition Engine" />
+    <meta property="og:description" content="Explore recursive patterns. Evolve your thinking. Become RECURSOR." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="/icon-512.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:title" content="RECURSOR" />
+    <meta name="twitter:description" content="An experiment in recursive cognition" />
+    <meta name="twitter:image" content="/icon-512.png" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RECURSOR" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('RECURSOR: Service Worker registered');
+            })
+            .catch((error) => {
+              console.log('Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
