@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PatternGrid } from './PatternGrid';
 import { RecursionPortal } from './RecursionPortal';
-import { db, evolvePattern, RecursionSession } from '@/lib/recursionDB';
+import { db, evolvePattern } from '@/lib/recursionDB';
 import { Button } from './ui/button';
+import { RecursionSession, Pattern } from '@/lib/types';
+import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } from '@/lib/constants';
 
 export const RecursiveEngine = () => {
   const [depth, setDepth] = useState(0);
-  const [pattern, setPattern] = useState<number[]>([0, 1, 2, 1, 0, 1, 2, 3, 0]);
+  const [pattern, setPattern] = useState<Pattern>(INITIAL_PATTERN);
   const [sessionStart, setSessionStart] = useState(Date.now());
   const [interactionCount, setInteractionCount] = useState(0);
   const [showPortal, setShowPortal] = useState(true);
@@ -26,7 +28,6 @@ export const RecursiveEngine = () => {
       decisions: [],
       patterns: [],
       completed: false,
-      decayFactor: 1,
       metadata: {
         duration: 0,
         interactionCount: 0,
@@ -53,7 +54,7 @@ export const RecursiveEngine = () => {
       setDepth(d => d + 1);
       setIsTransitioning(false);
       setInteractionCount(0);
-    }, 1000);
+    }, PORTAL_TRANSITION_DURATION);
   };
 
   const handlePatternChange = async (newPattern: number[]) => {
@@ -79,8 +80,8 @@ export const RecursiveEngine = () => {
       }
     }
 
-    // Check if pattern is "complete" (all values > 2)
-    const isComplete = newPattern.every(v => v > 2);
+    // Check if pattern is "complete" (all values >= COMPLETION_THRESHOLD)
+    const isComplete = newPattern.every(v => v >= COMPLETION_THRESHOLD);
     if (isComplete) {
       setShowPortal(true);
     }
@@ -103,7 +104,7 @@ export const RecursiveEngine = () => {
 
     // Start new session
     setDepth(0);
-    setPattern([0, 1, 2, 1, 0, 1, 2, 3, 0]);
+    setPattern(INITIAL_PATTERN);
     setShowPortal(true);
     setInteractionCount(0);
     await initSession();

@@ -8,15 +8,6 @@ interface RecursionPortalProps {
 }
 
 export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalProps) => {
-  const [pulsePhase, setPulsePhase] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPulsePhase((prev) => (prev + 1) % 360);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
-
   const depthColor = `hsl(${180 + depth * 30}, 100%, ${50 + depth * 5}%)`;
 
   return (

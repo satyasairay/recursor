@@ -5,11 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { getSessionStats, db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
+import { SessionStats } from '@/lib/types';
 
 const Memory = () => {
   const navigate = useNavigate();
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
-  const [stats, setStats] = useState<Awaited<ReturnType<typeof getSessionStats>> | null>(null);
+  const [stats, setStats] = useState<SessionStats | null>(null);
 
   useLiveQuery(async () => {
     const data = await getSessionStats();
@@ -42,7 +43,6 @@ const Memory = () => {
   const handleClearMemories = async () => {
     if (confirm('This will erase all your recursive memories. Continue?')) {
       await db.sessions.clear();
-      await db.memories.clear();
     }
   };
 

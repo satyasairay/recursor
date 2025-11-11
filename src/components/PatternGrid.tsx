@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { Pattern } from '@/lib/types';
+import { CELLS_TO_SELECT, MAX_CELL_STATE, BASE_HUE, HUE_SHIFT_PER_DEPTH, CELL_REVEAL_DELAY } from '@/lib/constants';
 
 interface PatternGridProps {
-  pattern: number[];
-  onPatternChange: (newPattern: number[]) => void;
+  pattern: Pattern;
+  onPatternChange: (newPattern: Pattern) => void;
   depth: number;
   locked?: boolean;
 }
@@ -29,9 +31,9 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
     setSelectedCells(newSelected);
 
     // Update pattern based on selection
-    if (newSelected.length === 3) {
+    if (newSelected.length === CELLS_TO_SELECT) {
       const newPattern = pattern.map((val, i) => 
-        newSelected.includes(i) ? (val + 1) % 4 : val
+        newSelected.includes(i) ? (val + 1) % (MAX_CELL_STATE + 1) : val
       );
       onPatternChange(newPattern);
       setSelectedCells([]);
@@ -40,7 +42,7 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
 
   const getCellColor = (value: number, index: number) => {
     const isSelected = selectedCells.includes(index);
-    const baseHue = 180 + depth * 30;
+    const baseHue = BASE_HUE + depth * HUE_SHIFT_PER_DEPTH;
     const brightness = 50 + (value * 15);
     
     if (isSelected) {
@@ -75,7 +77,7 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
               rotate: isRevealing ? [-180, 10, 0] : 0,
             }}
             transition={{
-              delay: index * 0.05,
+              delay: index * (CELL_REVEAL_DELAY / 1000),
               duration: 0.6,
               ease: 'easeOut',
             }}
@@ -111,8 +113,8 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
               {value > 0 ? '●'.repeat(value) : '○'}
             </motion.div>
 
-            {/* Fractal corner markers */}
-            {value > 2 && (
+            {/* Fractal corner markers for mature cells */}
+            {value >= MAX_CELL_STATE && (
               <>
                 <div className="absolute top-0 left-0 w-2 h-2 border-l-2 border-t-2 border-background" />
                 <div className="absolute bottom-0 right-0 w-2 h-2 border-r-2 border-b-2 border-background" />
@@ -129,7 +131,7 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {[...Array(3)].map((_, i) => (
+          {[...Array(CELLS_TO_SELECT)].map((_, i) => (
             <motion.div
               key={i}
               className="w-2 h-2 rounded-full"

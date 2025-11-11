@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
-import { db, RecursionSession } from '@/lib/recursionDB';
+import { useState } from 'react';
+import { db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { RecursionSession } from '@/lib/types';
 
 export const MemoryConstellation = () => {
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];

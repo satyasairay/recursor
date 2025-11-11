@@ -1,52 +1,32 @@
 import Dexie, { Table } from 'dexie';
+import { RecursionSession, SessionStats } from './types';
+import { EVOLUTION_HISTORY_SIZE } from './constants';
 
-export interface RecursionSession {
-  id?: number;
-  timestamp: number;
-  depth: number;
-  decisions: string[];
-  patterns: number[];
-  completed: boolean;
-  decayFactor: number;
-  metadata: {
-    duration: number;
-    interactionCount: number;
-    uniquePatterns: number;
-  };
-}
-
-export interface MemoryNode {
-  id?: number;
-  sessionId: number;
-  pattern: string;
-  weight: number;
-  connections: number[];
-  lastAccessed: number;
-}
-
+/**
+ * IndexedDB database for persisting recursive sessions.
+ * Stores user interaction history for pattern evolution and visualization.
+ */
 class RecursionDatabase extends Dexie {
   sessions!: Table<RecursionSession>;
-  memories!: Table<MemoryNode>;
 
   constructor() {
     super('RecursorDB');
     this.version(1).stores({
-      sessions: '++id, timestamp, depth, completed',
-      memories: '++id, sessionId, lastAccessed, weight'
+      sessions: '++id, timestamp, depth, completed'
     });
   }
 }
 
 export const db = new RecursionDatabase();
 
-// Memory decay system
-export const calculateDecay = (lastAccessed: number): number => {
-  const daysSince = (Date.now() - lastAccessed) / (1000 * 60 * 60 * 24);
-  return Math.max(0.1, 1 - (daysSince * 0.05));
-};
+// ============================================================================
+// SESSION ANALYTICS
+// ============================================================================
 
-// Session analytics
-export const getSessionStats = async () => {
+/**
+ * Calculate aggregate statistics across all recorded sessions.
+ */
+export const getSessionStats = async (): Promise<SessionStats> => {
   const sessions = await db.sessions.toArray();
   const totalDepth = sessions.reduce((sum, s) => sum + s.depth, 0);
   const avgDepth = sessions.length ? totalDepth / sessions.length : 0;
@@ -64,23 +44,34 @@ export const getSessionStats = async () => {
   };
 };
 
-// Pattern evolution
+// ============================================================================
+// PATTERN EVOLUTION ENGINE
+// ============================================================================
+
+/**
+ * Evolve a pattern based on the user's historical behavior.
+ * Analyzes recent sessions to determine mutation strategy.
+ * 
+ * @param currentPattern - The pattern to evolve
+ * @returns A new mutated pattern
+ */
 export const evolvePattern = async (currentPattern: number[]): Promise<number[]> => {
   const recentSessions = await db.sessions
     .orderBy('timestamp')
     .reverse()
-    .limit(5)
+    .limit(EVOLUTION_HISTORY_SIZE)
     .toArray();
 
   if (recentSessions.length === 0) return currentPattern;
 
-  // Mutate based on user's historical patterns
+  // Calculate which cell to mutate based on historical pattern data
+  // This creates a deterministic but seemingly "intelligent" evolution
   const mutation = recentSessions
     .flatMap(s => s.patterns)
-    .reduce((acc, val, idx, arr) => acc + (val % 3), 0) % currentPattern.length;
+    .reduce((acc, val) => acc + (val % 3), 0) % currentPattern.length;
 
   const evolved = [...currentPattern];
   evolved[mutation] = (evolved[mutation] + 1) % 4;
   
   return evolved;
-};
+}
