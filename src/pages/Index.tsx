@@ -3,11 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RecursiveEngine } from '@/components/RecursiveEngine';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { GlitchEffect } from '@/components/GlitchEffect';
+import { DepthVortex } from '@/components/DepthVortex';
+import { ArchitectureMorph } from '@/components/ArchitectureMorph';
+import { useNarrativeState } from '@/hooks/useNarrativeState';
 
 const Index = () => {
   const [hasEntered, setHasEntered] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
   const navigate = useNavigate();
+  const narrative = useNarrativeState();
 
   useEffect(() => {
     // Check if user has visited before
@@ -26,8 +31,13 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Memory navigation - always visible once entered */}
-      {hasEntered && (
+      {/* Narrative visual layers - wordless, evolving architecture */}
+      <DepthVortex stage={narrative.vortexStage} phase={narrative.architecturePhase} />
+      <ArchitectureMorph phase={narrative.architecturePhase} />
+      
+      <GlitchEffect depth={narrative.maxDepth}>
+        {/* Memory navigation - always visible once entered */}
+        {hasEntered && (
         <motion.div
           className="absolute top-8 right-8 z-50"
           initial={{ opacity: 0, x: 20 }}
@@ -172,6 +182,7 @@ const Index = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </GlitchEffect>
     </div>
   );
 };

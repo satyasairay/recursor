@@ -11,6 +11,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { SessionStats } from '@/lib/types';
 import { getAchievementStats } from '@/lib/achievementEngine';
+import { GlitchEffect } from '@/components/GlitchEffect';
+import { DepthVortex } from '@/components/DepthVortex';
+import { ArchitectureMorph } from '@/components/ArchitectureMorph';
+import { useNarrativeState } from '@/hooks/useNarrativeState';
 
 const Memory = () => {
   const navigate = useNavigate();
@@ -20,6 +24,7 @@ const Memory = () => {
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [nodeStats, setNodeStats] = useState<any>(null);
   const [achievementStats, setAchievementStats] = useState<any>(null);
+  const narrative = useNarrativeState();
 
   useLiveQuery(async () => {
     const data = await getSessionStats();
@@ -79,9 +84,14 @@ const Memory = () => {
   };
 
   return (
-    <div className="min-h-screen p-8">
-      {/* Header */}
-      <motion.div
+    <div className="min-h-screen p-8 relative overflow-hidden">
+      {/* Narrative visual layers */}
+      <DepthVortex stage={narrative.vortexStage} phase={narrative.architecturePhase} />
+      <ArchitectureMorph phase={narrative.architecturePhase} />
+      
+      <GlitchEffect depth={narrative.maxDepth}>
+        {/* Header */}
+        <motion.div
         className="max-w-6xl mx-auto mb-12"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -206,6 +216,7 @@ const Memory = () => {
           Clear All Memories
         </Button>
       </motion.div>
+      </GlitchEffect>
     </div>
   );
 };
