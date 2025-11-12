@@ -32,7 +32,7 @@ FUNCTION initRecursorSystem():
     FOR EACH node IN db.nodes:
       daysSince = (now - node.lastAccessed) / (24 * 60 * 60 * 1000)
       decayFactor = exp(-0.1 * daysSince)  // 10% per day
-      node.weight = max(0.5, min(1.0, decayFactor))
+      node.weight = max(0.3, min(1.0, decayFactor))  // Floor lowered to 0.3
       UPDATE node.weight
   
   // Phase 4: Session Initialization
@@ -1111,7 +1111,7 @@ GUARANTEES maintained by the system:
 2. MEMORY GRAPH INTEGRITY
    ✓ Node connections only reference existing nodes
    ✓ Pattern signatures uniquely identify patterns
-   ✓ Weights always in range [0.5, 1.0]
+   ✓ Weights always in range [0.3, 1.0] (floor lowered for deeper fade)
    ✓ Decay applied globally before session start
 
 3. EVOLUTION DETERMINISM

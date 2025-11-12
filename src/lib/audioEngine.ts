@@ -13,7 +13,7 @@ export interface AudioEngineParams {
   depth: number;
   entropy: number;      // 0-1 (from pattern analysis)
   chaos: number;        // 0-1 (from mutation weights)
-  decayFactor: number;  // 0.5-1.0 (from memory)
+  decayFactor: number;  // 0.3-1.0 (from memory node weights)
 }
 
 export class AudioEngine {

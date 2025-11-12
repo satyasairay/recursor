@@ -134,7 +134,7 @@ export interface RecursionSession {
   decisions: string[];
   patterns: number[]; // Flattened history of all pattern states
   completed: boolean;
-  decayFactor: number; // Time-based influence factor (0.5-1.0, where 1 = fresh)
+  decayFactor: number; // Time-based influence factor (0.3-1.0, where 1 = fresh)
   metadata: SessionMetadata;
 }
 

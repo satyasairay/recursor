@@ -135,7 +135,8 @@ const ACHIEVEMENT_DEFINITIONS = {
       const nodes = await db.nodes.toArray();
       if (nodes.length < 5) return false;
       
-      const allDecayed = nodes.every(n => n.weight < 0.3);
+      // Triggers when all nodes reach minimum weight floor (0.3)
+      const allDecayed = nodes.every(n => n.weight <= 0.3);
       return allDecayed;
     },
   },

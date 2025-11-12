@@ -279,7 +279,7 @@ chaos = (1 - decayFactor) × 0.3 + (depth × 0.05)
 - **Depth Weight**: 1 + (depth × 0.2), max 2.5
 - **Entropy Weight**: 1 + (0.5 - normalizedEntropy)
 - **Cluster Weight**: 1 + (clusterDensity × 0.3)
-- **Decay Weight**: decayFactor (0.5-1.0)
+- **Decay Weight**: decayFactor (0.3-1.0)
 
 **4. Branching Evolution**
 - Activates every 3 depths (depth % 3 === 0)
@@ -310,13 +310,13 @@ When `chaos > 0.2`:
 **Formula**: 
 ```typescript
 decay = Math.exp(-0.1 × daysSince)
-clamped between 0.5 and 1.0
+clamped between 0.3 and 1.0
 ```
 
 **Behavior**:
 - Fresh session: decay = 1.0 (full influence)
 - 7 days old: decay ≈ 0.5 (half influence)
-- Never below 0.5 (memories persist)
+- Never below 0.3 (memories persist but fade deeper)
 
 **Effect on Mutations**:
 - High decay (fresh) → predictable evolution
@@ -371,7 +371,7 @@ Balance between chaos and order:
 | Parameter | Value | Effect |
 |-----------|-------|--------|
 | `decayRate` | 0.1 | Decay speed per day |
-| `minDecay` | 0.5 | Minimum influence |
+| `minDecay` | 0.3 | Minimum influence (deeper fade) |
 | `depthMultiplier` | 0.2 | Depth → mutation strength |
 | `maxDepthWeight` | 2.5 | Maximum depth amplification |
 | `chaosBase` | 0.3 | Base chaos from decay |
