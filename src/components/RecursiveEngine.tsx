@@ -221,19 +221,19 @@ export const RecursiveEngine = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 relative">
       {/* Depth indicator with mutation stats */}
       <motion.div
-        className="absolute top-8 left-8 font-mono text-xs text-muted-foreground space-y-1"
+        className="absolute top-4 left-4 sm:top-8 sm:left-8 font-mono text-[10px] sm:text-xs text-muted-foreground space-y-1"
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 3, repeat: Infinity }}
       >
-        <div>RECURSION DEPTH: {depth}</div>
+        <div>DEPTH: {depth}</div>
         {depth > 0 && (() => {
           const analysis = analyzePattern(pattern, depth, 1.0);
           return (
             <>
-              <div className="text-[10px] opacity-70">
+              <div className="text-[8px] sm:text-[10px] opacity-70 hidden sm:block">
                 ENTROPY: {analysis.normalizedEntropy.toFixed(2)} | 
                 CLUSTERS: {analysis.clusterCount} | 
                 CHAOS: {(analysis.mutationWeights.chaos * 100).toFixed(0)}%
@@ -245,7 +245,7 @@ export const RecursiveEngine = () => {
 
       {/* Audio + Reset controls */}
       <motion.div
-        className="absolute top-8 right-8 flex gap-2"
+        className="absolute top-4 right-4 sm:top-8 sm:right-8 flex gap-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -255,16 +255,17 @@ export const RecursiveEngine = () => {
           className="font-mono text-xs"
           size="icon"
         >
-          {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          {audioEnabled ? <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" /> : <VolumeX className="w-3 h-3 sm:w-4 sm:h-4" />}
         </Button>
         
         {depth > 0 && (
           <Button
             onClick={handleReset}
             variant="outline"
-            className="font-mono text-xs"
+            className="font-mono text-[10px] sm:text-xs px-2 sm:px-4 h-8 sm:h-9"
           >
-            RESET MEMORY
+            <span className="hidden sm:inline">RESET MEMORY</span>
+            <span className="sm:hidden">RESET</span>
           </Button>
         )}
       </motion.div>

@@ -75,8 +75,8 @@ export const ReflectionModal = ({ sessionId, depth, open, onClose }: ReflectionM
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-background/95 backdrop-blur-xl border-primary/20">
-        <div className="relative py-8">
+      <DialogContent className="max-w-[90vw] sm:max-w-md bg-background/95 backdrop-blur-xl border-primary/20 max-h-[90vh] overflow-y-auto">
+        <div className="relative py-6 sm:py-8">
           {/* Animated background rings */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             {[...Array(5)].map((_, i) => (
@@ -95,42 +95,42 @@ export const ReflectionModal = ({ sessionId, depth, open, onClose }: ReflectionM
                   ease: 'easeOut',
                 }}
                 style={{
-                  width: '100px',
-                  height: '100px',
+                  width: '60px',
+                  height: '60px',
                 }}
               />
             ))}
           </div>
 
-          <div className="relative space-y-6 text-center">
+          <div className="relative space-y-4 sm:space-y-6 text-center">
             {/* Title */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-2"
+              className="space-y-1 sm:space-y-2"
             >
-              <h2 className="text-2xl font-bold text-foreground font-mono">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground font-mono">
                 RECURSION COMPLETE
               </h2>
-              <p className="text-sm text-muted-foreground font-mono">
+              <p className="text-xs sm:text-sm text-muted-foreground font-mono">
                 Session depth reached: {summary.peakDepth}
               </p>
             </motion.div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
               <AnimatePresence>
                 {phase >= 1 && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="space-y-2"
+                    className="space-y-1 sm:space-y-2"
                   >
-                    <Zap className="w-6 h-6 mx-auto text-primary" />
-                    <div className="text-2xl font-bold text-foreground font-mono">
+                    <Zap className="w-4 h-4 sm:w-6 sm:h-6 mx-auto text-primary" />
+                    <div className="text-lg sm:text-2xl font-bold text-foreground font-mono">
                       {summary.interactions}
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
                       Mutations
                     </div>
                   </motion.div>
@@ -140,13 +140,13 @@ export const ReflectionModal = ({ sessionId, depth, open, onClose }: ReflectionM
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="space-y-2"
+                    className="space-y-1 sm:space-y-2"
                   >
-                    <Target className="w-6 h-6 mx-auto text-primary" />
-                    <div className="text-2xl font-bold text-foreground font-mono">
+                    <Target className="w-4 h-4 sm:w-6 sm:h-6 mx-auto text-primary" />
+                    <div className="text-lg sm:text-2xl font-bold text-foreground font-mono">
                       {summary.uniquePatterns}
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
                       Patterns
                     </div>
                   </motion.div>
@@ -156,13 +156,13 @@ export const ReflectionModal = ({ sessionId, depth, open, onClose }: ReflectionM
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="space-y-2"
+                    className="space-y-1 sm:space-y-2"
                   >
-                    <Sparkles className="w-6 h-6 mx-auto text-primary" />
-                    <div className="text-2xl font-bold text-foreground font-mono">
+                    <Sparkles className="w-4 h-4 sm:w-6 sm:h-6 mx-auto text-primary" />
+                    <div className="text-lg sm:text-2xl font-bold text-foreground font-mono">
                       {formatDuration(summary.duration)}
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
                       Duration
                     </div>
                   </motion.div>

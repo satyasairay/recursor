@@ -78,15 +78,15 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
       
       {/* Grid container */}
       <div 
-        className="grid gap-2 p-4 recursive-border rounded-xl"
+        className="grid gap-2 sm:gap-3 p-3 sm:p-4 recursive-border rounded-xl"
         style={{
-          gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+          gridTemplateColumns: `repeat(${gridSize}, minmax(44px, 1fr))`,
         }}
       >
         {pattern.map((value, index) => (
           <motion.button
             key={index}
-            className="aspect-square rounded-lg relative overflow-hidden cursor-pointer disabled:cursor-not-allowed"
+            className="aspect-square rounded-lg relative overflow-hidden cursor-pointer disabled:cursor-not-allowed touch-manipulation min-h-[44px]"
             style={{
               backgroundColor: getCellColor(value, index),
             }}
@@ -126,7 +126,7 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
 
             {/* Value indicator */}
             <motion.div
-              className="absolute inset-0 flex items-center justify-center text-2xl font-bold"
+              className="absolute inset-0 flex items-center justify-center text-lg sm:text-xl md:text-2xl font-bold"
               animate={{
                 opacity: value > 0 ? 1 : 0.3,
               }}

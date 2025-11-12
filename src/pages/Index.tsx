@@ -37,10 +37,10 @@ const Index = () => {
       <ArchitectureMorph phase={narrative.architecturePhase} />
       
       <GlitchEffect depth={narrative.maxDepth}>
-        {/* Memory navigation - always visible once entered */}
-        {hasEntered && (
+      {/* Memory navigation - always visible once entered */}
+      {hasEntered && (
         <motion.div
-          className="absolute top-8 right-8 z-50 flex gap-2"
+          className="absolute top-4 right-4 sm:top-8 sm:right-8 z-50 flex flex-col sm:flex-row gap-2 items-end sm:items-center"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 1 }}
@@ -48,9 +48,10 @@ const Index = () => {
           <Button
             onClick={() => navigate('/memory')}
             variant="outline"
-            className="font-mono text-xs backdrop-blur-sm bg-card/50"
+            className="font-mono text-[10px] sm:text-xs backdrop-blur-sm bg-card/50 px-2 sm:px-4 h-8"
           >
-            VIEW MEMORIES
+            <span className="hidden sm:inline">VIEW MEMORIES</span>
+            <span className="sm:hidden">MEMORY</span>
           </Button>
           <UserMenu />
         </motion.div>
@@ -60,13 +61,13 @@ const Index = () => {
         {showIntro ? (
           <motion.div
             key="intro"
-            className="min-h-screen flex items-center justify-center p-8"
+            className="min-h-screen flex items-center justify-center p-4 sm:p-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="max-w-2xl text-center space-y-12">
+            <div className="max-w-2xl text-center space-y-8 sm:space-y-12">
               {/* Title sequence */}
               <motion.div
                 className="space-y-4"
@@ -75,7 +76,7 @@ const Index = () => {
                 transition={{ delay: 0.5 }}
               >
                 <motion.h1 
-                  className="text-7xl font-bold text-glow"
+                  className="text-5xl sm:text-6xl md:text-7xl font-bold text-glow"
                   animate={{
                     textShadow: [
                       '0 0 20px hsl(180 100% 50%)',
@@ -100,7 +101,7 @@ const Index = () => {
 
               {/* Symbol sequence */}
               <motion.div
-                className="flex justify-center gap-8 text-4xl"
+                className="flex justify-center gap-4 sm:gap-8 text-3xl sm:text-4xl"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.5 }}
@@ -144,10 +145,10 @@ const Index = () => {
               >
                 <button
                   onClick={handleEnter}
-                  className="relative group"
+                  className="relative group touch-manipulation"
                 >
                   <motion.div
-                    className="w-32 h-32 rounded-full recursive-border bg-card/50 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full recursive-border bg-card/50 backdrop-blur-sm flex items-center justify-center cursor-pointer"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     animate={{
@@ -159,7 +160,7 @@ const Index = () => {
                     }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <span className="text-3xl text-primary text-glow">◉</span>
+                    <span className="text-3xl sm:text-4xl text-primary text-glow">◉</span>
                   </motion.div>
 
                   <motion.div

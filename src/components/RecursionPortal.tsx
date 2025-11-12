@@ -12,7 +12,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
 
   return (
     <motion.div
-      className="relative flex items-center justify-center cursor-pointer"
+      className="relative flex items-center justify-center cursor-pointer touch-manipulation"
       onClick={isActive ? onEnter : undefined}
       whileHover={isActive ? { scale: 1.05 } : {}}
       animate={{
@@ -22,7 +22,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
     >
       {/* Outer ring */}
       <motion.div
-        className="absolute w-64 h-64 rounded-full border-2 opacity-30"
+        className="absolute w-48 h-48 sm:w-64 sm:h-64 rounded-full border-2 opacity-30"
         style={{ borderColor: depthColor }}
         animate={{
           rotate: 360,
@@ -36,7 +36,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
 
       {/* Middle ring */}
       <motion.div
-        className="absolute w-48 h-48 rounded-full border-2 opacity-50"
+        className="absolute w-36 h-36 sm:w-48 sm:h-48 rounded-full border-2 opacity-50"
         style={{ borderColor: depthColor }}
         animate={{
           rotate: -360,
@@ -50,7 +50,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
 
       {/* Core portal */}
       <motion.div
-        className="w-32 h-32 rounded-full relative overflow-hidden glow-primary"
+        className="w-24 h-24 sm:w-32 sm:h-32 rounded-full relative overflow-hidden glow-primary"
         style={{ 
           background: `radial-gradient(circle, ${depthColor}, transparent)`,
         }}
@@ -88,7 +88,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
 
         {/* Center symbol */}
         <motion.div
-          className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-glow"
+          className="absolute inset-0 flex items-center justify-center text-3xl sm:text-4xl font-bold text-glow"
           style={{ color: depthColor }}
           animate={{
             opacity: [0.7, 1, 0.7],
