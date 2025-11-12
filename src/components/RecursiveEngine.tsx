@@ -9,6 +9,7 @@ import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } fro
 import { analyzePattern } from '@/lib/mutationEngine';
 import { useAmbientAudio } from '@/hooks/useAmbientAudio';
 import { Volume2, VolumeX } from 'lucide-react';
+import { checkAchievements } from '@/lib/achievementEngine';
 
 export const RecursiveEngine = () => {
   const [depth, setDepth] = useState(0);
@@ -137,6 +138,9 @@ export const RecursiveEngine = () => {
           }
         });
       }
+      
+      // Check for achievements (silent)
+      await checkAchievements(sessionId);
     }
 
     // Check if pattern is "complete" (all values >= COMPLETION_THRESHOLD)
@@ -147,7 +151,7 @@ export const RecursiveEngine = () => {
   };
 
   const handleReset = async () => {
-    // Mark session as complete
+    // Mark session as complete and check final achievements
     if (sessionId) {
       const session = await db.sessions.get(sessionId);
       if (session) {
@@ -158,6 +162,9 @@ export const RecursiveEngine = () => {
             duration: Date.now() - sessionStart,
           }
         });
+        
+        // Final achievement check
+        await checkAchievements(sessionId);
       }
     }
 

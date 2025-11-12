@@ -6,13 +6,16 @@ import { getSessionStats, getNodeStats, db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { SessionStats } from '@/lib/types';
+import { getAchievementStats } from '@/lib/achievementEngine';
 
 const Memory = () => {
   const navigate = useNavigate();
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
   const nodes = useLiveQuery(() => db.nodes.toArray()) || [];
+  const achievements = useLiveQuery(() => db.achievements.toArray()) || [];
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [nodeStats, setNodeStats] = useState<any>(null);
+  const [achievementStats, setAchievementStats] = useState<any>(null);
 
   useLiveQuery(async () => {
     const data = await getSessionStats();
@@ -24,6 +27,11 @@ const Memory = () => {
     setNodeStats(data);
   });
 
+  useLiveQuery(async () => {
+    const data = await getAchievementStats();
+    setAchievementStats(data);
+  });
+
   const handleExport = async () => {
     if (nodes.length === 0) return;
 
@@ -31,6 +39,7 @@ const Memory = () => {
       timestamp: Date.now(),
       stats,
       nodeStats,
+      achievementStats,
       sessions: sessions.map(s => ({
         depth: s.depth,
         timestamp: s.timestamp,
@@ -42,21 +51,26 @@ const Memory = () => {
         timestamp: new Date(n.timestamp).toISOString(),
         lastAccessed: new Date(n.lastAccessed).toISOString(),
       })),
+      achievements: achievements.map(a => ({
+        ...a,
+        timestamp: new Date(a.timestamp).toISOString(),
+      })),
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `recursor-memory-graph-${Date.now()}.json`;
+    a.download = `recursor-insights-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleClearMemories = async () => {
-    if (confirm('This will erase all your recursive memories and nodes. Continue?')) {
+    if (confirm('This will erase all your recursive memories, nodes, and insights. Continue?')) {
       await db.sessions.clear();
       await db.nodes.clear();
+      await db.achievements.clear();
     }
   };
 
@@ -86,9 +100,9 @@ const Memory = () => {
         </div>
 
         {/* Stats Grid */}
-        {nodeStats && (
+        {nodeStats && achievementStats && (
           <motion.div
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+            className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -116,6 +130,18 @@ const Memory = () => {
               </div>
               <div className="text-xs text-muted-foreground font-mono">AVG LINKS</div>
             </div>
+
+            <div className="recursive-border rounded-lg p-4 bg-card/50 backdrop-blur-sm relative overflow-hidden">
+              <div className="text-2xl font-bold text-primary">{achievementStats.unrevealed}</div>
+              <div className="text-xs text-muted-foreground font-mono">HIDDEN INSIGHTS</div>
+              {achievementStats.unrevealed > 0 && (
+                <motion.div
+                  className="absolute inset-0 bg-purple-500/5"
+                  animate={{ opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+              )}
+            </div>
           </motion.div>
         )}
       </motion.div>
@@ -142,7 +168,7 @@ const Memory = () => {
           disabled={nodes.length === 0}
           className="font-mono"
         >
-          Export Memory Graph
+          Export Insights
         </Button>
 
         <Button

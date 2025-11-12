@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, applyWeightDecay } from '@/lib/recursionDB';
 import { useState } from 'react';
 import { MemoryNode } from '@/lib/types';
+import { getAchievementInfo, revealAchievement } from '@/lib/achievementEngine';
 
 /**
  * Constellation visualization of user's memory graph.
@@ -11,6 +12,7 @@ import { MemoryNode } from '@/lib/types';
  */
 export const MemoryConstellation = () => {
   const nodes = useLiveQuery(() => db.nodes.toArray());
+  const achievements = useLiveQuery(() => db.achievements.toArray());
   const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 
   if (!nodes || nodes.length === 0) {
@@ -52,6 +54,28 @@ export const MemoryConstellation = () => {
 
   const getConnectionThickness = (weight: number) => {
     return 0.5 + weight * 2;
+  };
+
+  const getNodeAchievements = (node: MemoryNode) => {
+    if (!achievements) return [];
+    return achievements.filter(a => a.sessionId === node.sessionId);
+  };
+
+  const hasUnrevealedAchievement = (node: MemoryNode) => {
+    const nodeAchievements = getNodeAchievements(node);
+    return nodeAchievements.some(a => !a.revealed);
+  };
+
+  const handleNodeClick = async (node: MemoryNode, index: number) => {
+    setHoveredNode(index);
+    
+    // Reveal achievements when node is clicked
+    const nodeAchievements = getNodeAchievements(node);
+    for (const achievement of nodeAchievements) {
+      if (!achievement.revealed && achievement.id) {
+        await revealAchievement(achievement.id);
+      }
+    }
   };
 
   return (
@@ -101,9 +125,31 @@ export const MemoryConstellation = () => {
           const size = getNodeSize(node);
           const opacity = getNodeOpacity(node);
           const isHovered = hoveredNode === i;
+          const hasAchievement = hasUnrevealedAchievement(node);
 
           return (
             <g key={node.id || i}>
+              {/* Achievement indicator (cryptic glow) */}
+              {hasAchievement && (
+                <motion.circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={size + 12}
+                  fill="none"
+                  stroke="hsl(280, 100%, 60%)"
+                  strokeWidth={1.5}
+                  animate={{
+                    opacity: [0.3, 0.8, 0.3],
+                    r: [size + 10, size + 14, size + 10],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+              )}
+
               {/* Glow effect on hover */}
               {isHovered && (
                 <motion.circle
@@ -134,6 +180,7 @@ export const MemoryConstellation = () => {
                 whileHover={{ scale: 1.3 }}
                 onMouseEnter={() => setHoveredNode(i)}
                 onMouseLeave={() => setHoveredNode(null)}
+                onClick={() => handleNodeClick(node, i)}
                 style={{ cursor: 'pointer' }}
               />
 
@@ -165,12 +212,12 @@ export const MemoryConstellation = () => {
       {/* Node info on hover */}
       {hoveredNode !== null && nodes[hoveredNode] && (
         <motion.div
-          className="absolute top-4 right-4 bg-background/95 backdrop-blur border border-primary/30 rounded-lg p-3 shadow-lg"
+          className="absolute top-4 right-4 bg-background/95 backdrop-blur border border-primary/30 rounded-lg p-3 shadow-lg max-w-xs"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
         >
-          <div className="font-mono text-xs space-y-1">
+          <div className="font-mono text-xs space-y-2">
             <div className="text-primary font-bold">
               NODE {nodes[hoveredNode].id}
             </div>
@@ -180,6 +227,28 @@ export const MemoryConstellation = () => {
             <div className="text-[10px] opacity-60">
               Last: {new Date(nodes[hoveredNode].lastAccessed).toLocaleString()}
             </div>
+            
+            {/* Reveal achievements */}
+            {achievements && getNodeAchievements(nodes[hoveredNode]).length > 0 && (
+              <div className="border-t border-primary/20 pt-2 mt-2 space-y-1">
+                <div className="text-primary/70 text-[10px] uppercase tracking-wider">
+                  Insights
+                </div>
+                {getNodeAchievements(nodes[hoveredNode]).map(achievement => {
+                  const info = getAchievementInfo(achievement.code);
+                  return (
+                    <motion.div
+                      key={achievement.id}
+                      className="text-[10px] italic text-muted-foreground"
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      "{info?.crypticHint || 'Unknown pattern'}"
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </motion.div>
       )}

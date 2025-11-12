@@ -145,6 +145,42 @@ export interface SessionMetadata {
 }
 
 // ============================================================================
+// ACHIEVEMENTS (Hidden Insights)
+// ============================================================================
+
+/**
+ * ACHIEVEMENT: A hidden milestone that reveals user behavior patterns.
+ * Earned silently, revealed subtly in constellation.
+ */
+export interface Achievement {
+  id?: number;
+  code: AchievementCode;
+  timestamp: number;
+  sessionId: number;
+  metadata: AchievementMetadata;
+  revealed: boolean; // Whether user has seen it in constellation
+}
+
+export type AchievementCode =
+  | 'looped_path'        // Same pattern/branch 3+ times
+  | 'the_scatterer'      // High chaos mutations consistently
+  | 'the_diver'          // Depth > 10 without reset
+  | 'echo_state'         // Exact pattern repetition
+  | 'perfect_symmetry'   // Created perfectly symmetric pattern
+  | 'void_gazer'         // Stayed at depth 0 for extended time
+  | 'connection_weaver'  // Created 10+ node connections
+  | 'decay_master'       // All nodes below 0.3 weight
+  | 'rapid_descent'      // Reached depth 5 in under 2 minutes
+  | 'pattern_monk'       // 100+ pattern mutations in one session;
+
+export interface AchievementMetadata {
+  depth?: number;
+  value?: number;
+  pattern?: Pattern;
+  description?: string;
+}
+
+// ============================================================================
 // STATISTICS & ANALYTICS
 // ============================================================================
 

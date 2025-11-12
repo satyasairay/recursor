@@ -1,21 +1,23 @@
 import Dexie, { Table } from 'dexie';
-import { RecursionSession, SessionStats, Pattern, RecursionDepth, MemoryNode } from './types';
+import { RecursionSession, SessionStats, Pattern, RecursionDepth, MemoryNode, Achievement } from './types';
 import { EVOLUTION_HISTORY_SIZE, WEIGHT_DECAY_RATE, MIN_NODE_WEIGHT, MAX_NODE_CONNECTIONS, SIMILARITY_THRESHOLD } from './constants';
 import { evolvePattern as evolvePatternEngine } from './mutationEngine';
 
 /**
- * IndexedDB database for persisting recursive sessions and memory nodes.
+ * IndexedDB database for persisting recursive sessions, memory nodes, and achievements.
  * Stores user interaction history for pattern evolution and visualization.
  */
 class RecursionDatabase extends Dexie {
   sessions!: Table<RecursionSession>;
   nodes!: Table<MemoryNode>;
+  achievements!: Table<Achievement>;
 
   constructor() {
     super('RecursorDB');
-    this.version(2).stores({
+    this.version(3).stores({
       sessions: '++id, timestamp, depth, completed',
-      nodes: '++id, timestamp, sessionId, lastAccessed, weight'
+      nodes: '++id, timestamp, sessionId, lastAccessed, weight',
+      achievements: '++id, sessionId, code, timestamp, revealed'
     });
   }
 }
