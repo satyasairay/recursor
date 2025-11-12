@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { MemoryConstellation } from '@/components/MemoryConstellation';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { getSessionStats, db } from '@/lib/recursionDB';
+import { getSessionStats, getNodeStats, db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { SessionStats } from '@/lib/types';
@@ -10,24 +10,37 @@ import { SessionStats } from '@/lib/types';
 const Memory = () => {
   const navigate = useNavigate();
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
+  const nodes = useLiveQuery(() => db.nodes.toArray()) || [];
   const [stats, setStats] = useState<SessionStats | null>(null);
+  const [nodeStats, setNodeStats] = useState<any>(null);
 
   useLiveQuery(async () => {
     const data = await getSessionStats();
     setStats(data);
   });
 
+  useLiveQuery(async () => {
+    const data = await getNodeStats();
+    setNodeStats(data);
+  });
+
   const handleExport = async () => {
-    if (sessions.length === 0) return;
+    if (nodes.length === 0) return;
 
     const exportData = {
       timestamp: Date.now(),
       stats,
+      nodeStats,
       sessions: sessions.map(s => ({
         depth: s.depth,
         timestamp: s.timestamp,
         patterns: s.patterns,
         completed: s.completed,
+      })),
+      nodes: nodes.map(n => ({
+        ...n,
+        timestamp: new Date(n.timestamp).toISOString(),
+        lastAccessed: new Date(n.lastAccessed).toISOString(),
       })),
     };
 
@@ -35,14 +48,15 @@ const Memory = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `recursor-memory-${Date.now()}.json`;
+    a.download = `recursor-memory-graph-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleClearMemories = async () => {
-    if (confirm('This will erase all your recursive memories. Continue?')) {
+    if (confirm('This will erase all your recursive memories and nodes. Continue?')) {
       await db.sessions.clear();
+      await db.nodes.clear();
     }
   };
 
@@ -72,7 +86,7 @@ const Memory = () => {
         </div>
 
         {/* Stats Grid */}
-        {stats && (
+        {nodeStats && (
           <motion.div
             className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
             initial={{ opacity: 0 }}
@@ -80,27 +94,27 @@ const Memory = () => {
             transition={{ delay: 0.2 }}
           >
             <div className="recursive-border rounded-lg p-4 bg-card/50 backdrop-blur-sm">
-              <div className="text-2xl font-bold text-primary">{stats.totalSessions}</div>
-              <div className="text-xs text-muted-foreground font-mono">TOTAL SESSIONS</div>
+              <div className="text-2xl font-bold text-primary">{nodeStats.totalNodes}</div>
+              <div className="text-xs text-muted-foreground font-mono">MEMORY NODES</div>
             </div>
 
             <div className="recursive-border rounded-lg p-4 bg-card/50 backdrop-blur-sm">
-              <div className="text-2xl font-bold text-primary">{stats.maxDepth}</div>
-              <div className="text-xs text-muted-foreground font-mono">MAX DEPTH</div>
-            </div>
-
-            <div className="recursive-border rounded-lg p-4 bg-card/50 backdrop-blur-sm">
-              <div className="text-2xl font-bold text-primary">
-                {(stats.avgDepth || 0).toFixed(1)}
-              </div>
-              <div className="text-xs text-muted-foreground font-mono">AVG DEPTH</div>
+              <div className="text-2xl font-bold text-primary">{nodeStats.totalConnections}</div>
+              <div className="text-xs text-muted-foreground font-mono">CONNECTIONS</div>
             </div>
 
             <div className="recursive-border rounded-lg p-4 bg-card/50 backdrop-blur-sm">
               <div className="text-2xl font-bold text-primary">
-                {(stats.completionRate * 100).toFixed(0)}%
+                {(nodeStats.avgWeight || 0).toFixed(2)}
               </div>
-              <div className="text-xs text-muted-foreground font-mono">COMPLETION</div>
+              <div className="text-xs text-muted-foreground font-mono">AVG WEIGHT</div>
+            </div>
+
+            <div className="recursive-border rounded-lg p-4 bg-card/50 backdrop-blur-sm">
+              <div className="text-2xl font-bold text-primary">
+                {(nodeStats.avgConnectionsPerNode || 0).toFixed(1)}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono">AVG LINKS</div>
             </div>
           </motion.div>
         )}
@@ -125,16 +139,16 @@ const Memory = () => {
       >
         <Button
           onClick={handleExport}
-          disabled={sessions.length === 0}
+          disabled={nodes.length === 0}
           className="font-mono"
         >
-          Export Memory Artifact
+          Export Memory Graph
         </Button>
 
         <Button
           onClick={handleClearMemories}
           variant="destructive"
-          disabled={sessions.length === 0}
+          disabled={nodes.length === 0}
           className="font-mono"
         >
           Clear All Memories

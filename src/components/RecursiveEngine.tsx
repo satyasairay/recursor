@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PatternGrid } from './PatternGrid';
 import { RecursionPortal } from './RecursionPortal';
-import { db, evolvePattern, calculateDecayFactor } from '@/lib/recursionDB';
+import { db, evolvePattern, calculateDecayFactor, createMemoryNode, decayAllNodes } from '@/lib/recursionDB';
 import { Button } from './ui/button';
 import { RecursionSession, Pattern } from '@/lib/types';
 import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } from '@/lib/constants';
@@ -18,8 +18,12 @@ export const RecursiveEngine = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    // Initialize first session
-    initSession();
+    // Initialize first session and apply decay
+    const init = async () => {
+      await decayAllNodes();
+      await initSession();
+    };
+    init();
   }, []);
 
   const initSession = async () => {
@@ -76,8 +80,11 @@ export const RecursiveEngine = () => {
     setPattern(newPattern);
     setInteractionCount(c => c + 1);
 
-    // Record decision
+    // Create memory node for this pattern change
     if (sessionId) {
+      await createMemoryNode(newPattern, depth, sessionId);
+      
+      // Record decision in session
       const session = await db.sessions.get(sessionId);
       if (session) {
         const updatedDecisions = [...session.decisions, `pattern-${depth}-${Date.now()}`];

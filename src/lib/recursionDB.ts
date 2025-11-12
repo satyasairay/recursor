@@ -1,19 +1,21 @@
 import Dexie, { Table } from 'dexie';
-import { RecursionSession, SessionStats, Pattern, RecursionDepth } from './types';
-import { EVOLUTION_HISTORY_SIZE } from './constants';
+import { RecursionSession, SessionStats, Pattern, RecursionDepth, MemoryNode } from './types';
+import { EVOLUTION_HISTORY_SIZE, WEIGHT_DECAY_RATE, MIN_NODE_WEIGHT, MAX_NODE_CONNECTIONS, SIMILARITY_THRESHOLD } from './constants';
 import { evolvePattern as evolvePatternEngine } from './mutationEngine';
 
 /**
- * IndexedDB database for persisting recursive sessions.
+ * IndexedDB database for persisting recursive sessions and memory nodes.
  * Stores user interaction history for pattern evolution and visualization.
  */
 class RecursionDatabase extends Dexie {
   sessions!: Table<RecursionSession>;
+  nodes!: Table<MemoryNode>;
 
   constructor() {
     super('RecursorDB');
-    this.version(1).stores({
-      sessions: '++id, timestamp, depth, completed'
+    this.version(2).stores({
+      sessions: '++id, timestamp, depth, completed',
+      nodes: '++id, timestamp, sessionId, lastAccessed, weight'
     });
   }
 }
@@ -108,4 +110,133 @@ export const evolvePattern = async (
     avgDecayFactor,
     enableBranching
   );
+};
+
+// ============================================================================
+// MEMORY GRAPH SYSTEM
+// ============================================================================
+
+/**
+ * Create a unique signature for a pattern.
+ * Used to identify similar patterns across sessions.
+ */
+export const createPatternSignature = (pattern: Pattern): string => {
+  return pattern.join('-');
+};
+
+/**
+ * Calculate similarity between two patterns (0-1, where 1 = identical).
+ */
+const calculatePatternSimilarity = (p1: Pattern, p2: Pattern): number => {
+  if (p1.length !== p2.length) return 0;
+  
+  let matches = 0;
+  for (let i = 0; i < p1.length; i++) {
+    if (p1[i] === p2[i]) matches++;
+  }
+  
+  return matches / p1.length;
+};
+
+/**
+ * Apply time-based decay to a node's weight.
+ */
+export const applyWeightDecay = (weight: number, lastAccessed: number): number => {
+  const daysSince = (Date.now() - lastAccessed) / (1000 * 60 * 60 * 24);
+  const decayed = weight * Math.exp(-WEIGHT_DECAY_RATE * daysSince);
+  return Math.max(MIN_NODE_WEIGHT, decayed);
+};
+
+/**
+ * Create a new memory node from a pattern change.
+ * Automatically finds and creates connections to similar nodes.
+ */
+export const createMemoryNode = async (
+  pattern: Pattern,
+  depth: RecursionDepth,
+  sessionId: number,
+  branchOrigin: string | null = null
+): Promise<number> => {
+  const signature = createPatternSignature(pattern);
+  const now = Date.now();
+
+  // Check if this exact pattern already exists
+  const existingNode = await db.nodes
+    .where('patternSignature')
+    .equals(signature)
+    .first();
+
+  if (existingNode && existingNode.id) {
+    // Update existing node: increase weight and refresh lastAccessed
+    const newWeight = Math.min(1.0, existingNode.weight + 0.1);
+    await db.nodes.update(existingNode.id, {
+      weight: newWeight,
+      lastAccessed: now,
+    });
+    return existingNode.id;
+  }
+
+  // Find similar nodes for connections
+  const recentNodes = await db.nodes
+    .orderBy('lastAccessed')
+    .reverse()
+    .limit(50)
+    .toArray();
+
+  const connections: number[] = [];
+  for (const node of recentNodes) {
+    if (node.id && connections.length < MAX_NODE_CONNECTIONS) {
+      const similarity = calculatePatternSimilarity(pattern, node.pattern);
+      if (similarity >= SIMILARITY_THRESHOLD) {
+        connections.push(node.id);
+      }
+    }
+  }
+
+  // Create new node
+  const newNode: MemoryNode = {
+    timestamp: now,
+    patternSignature: signature,
+    pattern,
+    depth,
+    branchOrigin,
+    weight: 1.0, // Start at full weight
+    connections,
+    lastAccessed: now,
+    sessionId,
+  };
+
+  return await db.nodes.add(newNode);
+};
+
+/**
+ * Apply decay to all nodes in the database.
+ * Should be called periodically or on app start.
+ */
+export const decayAllNodes = async (): Promise<void> => {
+  const nodes = await db.nodes.toArray();
+  
+  for (const node of nodes) {
+    if (!node.id) continue;
+    
+    const newWeight = applyWeightDecay(node.weight, node.lastAccessed);
+    await db.nodes.update(node.id, { weight: newWeight });
+  }
+};
+
+/**
+ * Get node statistics for analytics.
+ */
+export const getNodeStats = async () => {
+  const nodes = await db.nodes.toArray();
+  const totalWeight = nodes.reduce((sum, n) => sum + n.weight, 0);
+  const avgWeight = nodes.length ? totalWeight / nodes.length : 0;
+  const totalConnections = nodes.reduce((sum, n) => sum + n.connections.length, 0);
+  
+  return {
+    totalNodes: nodes.length,
+    avgWeight,
+    totalConnections,
+    avgConnectionsPerNode: nodes.length ? totalConnections / nodes.length : 0,
+  };
 };

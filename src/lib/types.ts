@@ -98,6 +98,28 @@ export type NodeAction =
   | 'session-complete';
 
 // ============================================================================
+// MEMORY GRAPH (The Soul)
+// ============================================================================
+
+/**
+ * MEMORY NODE: A single point in the user's cognitive graph.
+ * Each node represents a unique pattern state and its relationships.
+ * Nodes decay over time but never fully disappear.
+ */
+export interface MemoryNode {
+  id?: number;
+  timestamp: number;
+  patternSignature: string;      // Hash of the pattern for uniqueness
+  pattern: Pattern;               // The actual pattern at this moment
+  depth: RecursionDepth;
+  branchOrigin: string | null;   // ID of parent node (future branching)
+  weight: number;                 // Importance/frequency (0-1, decays over time)
+  connections: number[];          // IDs of related nodes
+  lastAccessed: number;           // Last time this node was referenced
+  sessionId: number;              // Which session created this node
+}
+
+// ============================================================================
 // SESSION TRACKING
 // ============================================================================
 
