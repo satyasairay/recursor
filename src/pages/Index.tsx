@@ -39,22 +39,39 @@ const Index = () => {
       <GlitchEffect depth={narrative.maxDepth}>
       {/* Memory navigation - always visible once entered */}
       {hasEntered && (
-        <motion.div
-          className="absolute top-4 right-4 sm:top-8 sm:right-8 z-50 flex flex-col sm:flex-row gap-2 items-end sm:items-center"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1 }}
-        >
-          <Button
-            onClick={() => navigate('/memory')}
-            variant="outline"
-            className="font-mono text-[10px] sm:text-xs backdrop-blur-sm bg-card/50 px-2 sm:px-4 h-8"
+        <>
+          <motion.div
+            className="absolute top-4 right-4 sm:top-8 sm:right-8 z-50 flex flex-col sm:flex-row gap-2 items-end sm:items-center"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1 }}
           >
-            <span className="hidden sm:inline">VIEW MEMORIES</span>
-            <span className="sm:hidden">MEMORY</span>
-          </Button>
-          <UserMenu />
-        </motion.div>
+            <Button
+              onClick={() => navigate('/memory')}
+              variant="outline"
+              className="font-mono text-[10px] sm:text-xs backdrop-blur-sm bg-card/50 px-2 sm:px-4 h-8"
+            >
+              <span className="hidden sm:inline">VIEW MEMORIES</span>
+              <span className="sm:hidden">MEMORY</span>
+            </Button>
+            <UserMenu />
+          </motion.div>
+
+          {/* Replay Intro button */}
+          <motion.button
+            onClick={() => {
+              localStorage.removeItem('recursor-visited');
+              window.location.reload();
+            }}
+            className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 z-50 font-mono text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors backdrop-blur-sm bg-card/30 px-2 py-1 rounded"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.2 }}
+            title="Replay intro sequence"
+          >
+            ↻ Replay Intro
+          </motion.button>
+        </>
       )}
 
       <AnimatePresence mode="wait">
