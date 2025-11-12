@@ -126,7 +126,7 @@ export class ArtifactGenerator {
       return this.canvas;
     }
 
-    const maxDepth = Math.max(...sessions.map(s => s.depth));
+    const maxDepth = Math.max(...sessions.map(s => s.depth), 1); // Ensure at least 1
     const padding = 60;
     const chartWidth = this.config.width - padding * 2;
     const chartHeight = this.config.height - padding * 2;
@@ -146,8 +146,13 @@ export class ArtifactGenerator {
 
     sessions.forEach((session, i) => {
       const x = padding + i * spacing + (spacing - barWidth) / 2;
-      const height = (session.depth / maxDepth) * chartHeight;
+      const height = Math.max(1, (session.depth / maxDepth) * chartHeight);
       const y = this.config.height - padding - height;
+
+      // Validate coordinates are finite
+      if (!isFinite(x) || !isFinite(y) || !isFinite(height)) {
+        return;
+      }
 
       // Bar gradient
       const gradient = this.ctx.createLinearGradient(x, y, x, this.config.height - padding);
