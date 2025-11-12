@@ -7,6 +7,8 @@ import { Button } from './ui/button';
 import { RecursionSession, Pattern } from '@/lib/types';
 import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } from '@/lib/constants';
 import { analyzePattern } from '@/lib/mutationEngine';
+import { useAmbientAudio } from '@/hooks/useAmbientAudio';
+import { Volume2, VolumeX } from 'lucide-react';
 
 export const RecursiveEngine = () => {
   const [depth, setDepth] = useState(0);
@@ -16,6 +18,9 @@ export const RecursiveEngine = () => {
   const [showPortal, setShowPortal] = useState(true);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  // Ambient audio system
+  const { isEnabled: audioEnabled, toggleAudio, updateParams } = useAmbientAudio();
 
   useEffect(() => {
     // Initialize first session and apply decay
@@ -25,6 +30,38 @@ export const RecursiveEngine = () => {
     };
     init();
   }, []);
+
+  // Update audio parameters when state changes
+  useEffect(() => {
+    if (audioEnabled && depth >= 0) {
+      const analysis = analyzePattern(pattern, depth, 1.0);
+      
+      // Get average decay from recent nodes
+      const getAvgDecay = async () => {
+        const recentNodes = await db.nodes
+          .orderBy('lastAccessed')
+          .reverse()
+          .limit(10)
+          .toArray();
+        
+        const avgDecay = recentNodes.length > 0
+          ? recentNodes.reduce((sum, n) => {
+              const decay = calculateDecayFactor(n.lastAccessed);
+              return sum + decay;
+            }, 0) / recentNodes.length
+          : 1.0;
+        
+        updateParams({
+          depth,
+          entropy: analysis.normalizedEntropy,
+          chaos: analysis.mutationWeights.chaos,
+          decayFactor: avgDecay,
+        });
+      };
+      
+      getAvgDecay();
+    }
+  }, [depth, pattern, audioEnabled]);
 
   const initSession = async () => {
     const now = Date.now();
@@ -155,19 +192,30 @@ export const RecursiveEngine = () => {
         })()}
       </motion.div>
 
-      {/* Reset button */}
+      {/* Audio + Reset controls */}
       <motion.div
-        className="absolute top-8 right-8"
+        className="absolute top-8 right-8 flex gap-2"
         initial={{ opacity: 0 }}
-        animate={{ opacity: depth > 0 ? 1 : 0 }}
+        animate={{ opacity: 1 }}
       >
         <Button
-          onClick={handleReset}
+          onClick={toggleAudio}
           variant="outline"
           className="font-mono text-xs"
+          size="icon"
         >
-          RESET MEMORY
+          {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
         </Button>
+        
+        {depth > 0 && (
+          <Button
+            onClick={handleReset}
+            variant="outline"
+            className="font-mono text-xs"
+          >
+            RESET MEMORY
+          </Button>
+        )}
       </motion.div>
 
       {/* Main content area */}
