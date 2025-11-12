@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { MemoryConstellation } from '@/components/MemoryConstellation';
+import { ArtifactExport } from '@/components/ArtifactExport';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { getSessionStats, getNodeStats, db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -156,19 +158,31 @@ const Memory = () => {
         <MemoryConstellation />
       </motion.div>
 
+      {/* Artifact Export */}
+      <motion.div
+        className="max-w-6xl mx-auto mb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+      >
+        <ArtifactExport nodes={nodes} sessions={sessions} />
+      </motion.div>
+
+      <Separator className="max-w-6xl mx-auto mb-8" />
+
       {/* Actions */}
       <motion.div
         className="max-w-6xl mx-auto flex justify-center gap-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.5 }}
       >
         <Button
           onClick={handleExport}
           disabled={nodes.length === 0}
           className="font-mono"
         >
-          Export Insights
+          Export Data JSON
         </Button>
 
         <Button
