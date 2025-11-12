@@ -77,6 +77,144 @@ export type Database = {
         }
         Relationships: []
       }
+      constellation_archives: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          session_id: string
+          svg_data: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          session_id: string
+          svg_data: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          session_id?: string
+          svg_data?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "constellation_archives_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recursion_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recursion_achievements: {
+        Row: {
+          code: string
+          id: string
+          metadata: Json
+          session_id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          id?: string
+          metadata?: Json
+          session_id: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          id?: string
+          metadata?: Json
+          session_id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recursion_achievements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recursion_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recursion_patterns: {
+        Row: {
+          created_at: string
+          depth: number
+          id: string
+          pattern: Json
+          session_id: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          depth: number
+          id?: string
+          pattern: Json
+          session_id: string
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          depth?: number
+          id?: string
+          pattern?: Json
+          session_id?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recursion_patterns_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "recursion_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recursion_sessions: {
+        Row: {
+          created_at: string
+          depth: number
+          id: string
+          metadata: Json
+          pattern: Json
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          depth?: number
+          id?: string
+          metadata?: Json
+          pattern: Json
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          depth?: number
+          id?: string
+          metadata?: Json
+          pattern?: Json
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_tiers: {
         Row: {
           created_at: string | null

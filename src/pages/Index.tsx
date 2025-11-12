@@ -7,6 +7,7 @@ import { GlitchEffect } from '@/components/GlitchEffect';
 import { DepthVortex } from '@/components/DepthVortex';
 import { ArchitectureMorph } from '@/components/ArchitectureMorph';
 import { useNarrativeState } from '@/hooks/useNarrativeState';
+import { UserMenu } from '@/components/UserMenu';
 
 const Index = () => {
   const [hasEntered, setHasEntered] = useState(false);
@@ -39,7 +40,7 @@ const Index = () => {
         {/* Memory navigation - always visible once entered */}
         {hasEntered && (
         <motion.div
-          className="absolute top-8 right-8 z-50"
+          className="absolute top-8 right-8 z-50 flex gap-2"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 1 }}
@@ -51,6 +52,7 @@ const Index = () => {
           >
             VIEW MEMORIES
           </Button>
+          <UserMenu />
         </motion.div>
       )}
 

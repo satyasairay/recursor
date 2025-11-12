@@ -15,6 +15,7 @@ import { GlitchEffect } from '@/components/GlitchEffect';
 import { DepthVortex } from '@/components/DepthVortex';
 import { ArchitectureMorph } from '@/components/ArchitectureMorph';
 import { useNarrativeState } from '@/hooks/useNarrativeState';
+import { UserMenu } from '@/components/UserMenu';
 
 const Memory = () => {
   const navigate = useNavigate();
@@ -104,13 +105,16 @@ const Memory = () => {
             </p>
           </div>
 
-          <Button
-            onClick={() => navigate('/')}
-            variant="outline"
-            className="font-mono"
-          >
-            Return to Recursion
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => navigate('/')}
+              variant="outline"
+              className="font-mono"
+            >
+              Return to Recursion
+            </Button>
+            <UserMenu />
+          </div>
         </div>
 
         {/* Stats Grid */}

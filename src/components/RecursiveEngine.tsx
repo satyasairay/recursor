@@ -11,6 +11,8 @@ import { analyzePattern } from '@/lib/mutationEngine';
 import { useAmbientAudio } from '@/hooks/useAmbientAudio';
 import { Volume2, VolumeX } from 'lucide-react';
 import { checkAchievements } from '@/lib/achievementEngine';
+import { cloudSync } from '@/lib/cloudSync';
+import { useAuth } from '@/hooks/useAuth';
 
 export const RecursiveEngine = () => {
   const [depth, setDepth] = useState(0);
@@ -19,12 +21,22 @@ export const RecursiveEngine = () => {
   const [interactionCount, setInteractionCount] = useState(0);
   const [showPortal, setShowPortal] = useState(true);
   const [sessionId, setSessionId] = useState<number | null>(null);
+  const [cloudSessionId, setCloudSessionId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showReflection, setShowReflection] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
   
+  // Auth and cloud sync
+  const { user } = useAuth();
+  
   // Ambient audio system
   const { isEnabled: audioEnabled, toggleAudio, updateParams } = useAmbientAudio();
+
+  useEffect(() => {
+    if (user) {
+      cloudSync.setUser(user.id);
+    }
+  }, [user]);
 
   useEffect(() => {
     // Initialize first session and apply decay
@@ -86,6 +98,12 @@ export const RecursiveEngine = () => {
     const id = await db.sessions.add(session);
     setSessionId(id);
     setSessionStart(now);
+    
+    // Sync to cloud if authenticated
+    if (user) {
+      const cloudId = await cloudSync.saveSession(session);
+      if (cloudId) setCloudSessionId(cloudId);
+    }
   };
 
   const handleEnterPortal = async () => {
@@ -130,7 +148,7 @@ export const RecursiveEngine = () => {
       if (session) {
         const updatedDecisions = [...session.decisions, `pattern-${depth}-${Date.now()}`];
         const updatedPatterns = [...session.patterns, ...newPattern];
-        await db.sessions.update(sessionId, {
+        const updates = {
           decisions: updatedDecisions,
           patterns: updatedPatterns,
           depth: depth,
@@ -139,11 +157,26 @@ export const RecursiveEngine = () => {
             interactionCount: interactionCount + 1,
             uniquePatterns: new Set(updatedPatterns).size,
           }
-        });
+        };
+        
+        await db.sessions.update(sessionId, updates);
+        
+        // Sync to cloud if authenticated
+        if (user && cloudSessionId) {
+          await cloudSync.updateSession(cloudSessionId, updates);
+          await cloudSync.savePattern(cloudSessionId, newPattern, depth);
+        }
       }
       
       // Check for achievements (silent)
-      await checkAchievements(sessionId);
+      const achievementCodes = await checkAchievements(sessionId);
+      
+      // Sync achievements to cloud
+      if (user && cloudSessionId && achievementCodes.length > 0) {
+        for (const code of achievementCodes) {
+          await cloudSync.saveAchievement(cloudSessionId, code);
+        }
+      }
     }
 
     // Check if pattern is "complete" (all values >= COMPLETION_THRESHOLD)
