@@ -9,6 +9,7 @@ import { RecursionSession, Pattern } from '@/lib/types';
 import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } from '@/lib/constants';
 import { analyzePattern } from '@/lib/mutationEngine';
 import { useAmbientAudio } from '@/hooks/useAmbientAudio';
+import { useCrypticMessages } from '@/hooks/useCrypticMessages';
 import { Volume2, VolumeX } from 'lucide-react';
 import { checkAchievements } from '@/lib/achievementEngine';
 import { cloudSync } from '@/lib/cloudSync';
@@ -25,12 +26,17 @@ export const RecursiveEngine = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showReflection, setShowReflection] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
+  const [totalMutations, setTotalMutations] = useState(0);
+  const [envPulse, setEnvPulse] = useState(0);
   
   // Auth and cloud sync
   const { user } = useAuth();
   
   // Ambient audio system
   const { isEnabled: audioEnabled, toggleAudio, updateParams } = useAmbientAudio();
+  
+  // Cryptic message system
+  const crypticMessage = useCrypticMessages(totalMutations);
 
   useEffect(() => {
     if (user) {
@@ -138,6 +144,10 @@ export const RecursiveEngine = () => {
   const handlePatternChange = async (newPattern: number[]) => {
     setPattern(newPattern);
     setInteractionCount(c => c + 1);
+    setTotalMutations(m => m + 1);
+    
+    // Trigger environmental pulse
+    setEnvPulse(Date.now());
 
     // Create memory node for this pattern change
     if (sessionId) {
@@ -225,19 +235,28 @@ export const RecursiveEngine = () => {
       {/* Depth indicator with mutation stats */}
       <motion.div
         className="absolute top-4 left-4 sm:top-8 sm:left-8 font-mono text-[10px] sm:text-xs text-muted-foreground space-y-1"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 3, repeat: Infinity }}
+        animate={{ 
+          opacity: envPulse > 0 ? [0.5, 1, 0.5] : [0.5, 1, 0.5],
+          scale: envPulse > 0 ? [1, 1.05, 1] : 1,
+        }}
+        transition={{ duration: envPulse > 0 ? 0.5 : 3, repeat: envPulse > 0 ? 0 : Infinity }}
       >
         <div>DEPTH: {depth}</div>
         {depth > 0 && (() => {
           const analysis = analyzePattern(pattern, depth, 1.0);
           return (
             <>
-              <div className="text-[8px] sm:text-[10px] opacity-70 hidden sm:block">
+              <motion.div 
+                className="text-[8px] sm:text-[10px] opacity-70 hidden sm:block"
+                animate={envPulse > 0 ? { 
+                  opacity: [0.7, 1, 0.7],
+                } : {}}
+                transition={{ duration: 0.3 }}
+              >
                 ENTROPY: {analysis.normalizedEntropy.toFixed(2)} | 
                 CLUSTERS: {analysis.clusterCount} | 
                 CHAOS: {(analysis.mutationWeights.chaos * 100).toFixed(0)}%
-              </div>
+              </motion.div>
             </>
           );
         })()}
@@ -319,20 +338,31 @@ export const RecursiveEngine = () => {
               transition={{ duration: 0.6 }}
               className="flex flex-col items-center gap-8"
             >
-              <PatternGrid
-                pattern={pattern}
-                onPatternChange={handlePatternChange}
-                depth={depth}
-                locked={isTransitioning}
-              />
-
-              <motion.div
-                className="text-center text-muted-foreground font-mono text-xs"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                Select 3 cells to mutate the pattern
-              </motion.div>
+              <div className="relative">
+                <PatternGrid
+                  pattern={pattern}
+                  onPatternChange={handlePatternChange}
+                  depth={depth}
+                  locked={isTransitioning}
+                />
+                
+                {/* Cryptic message overlay */}
+                <AnimatePresence>
+                  {crypticMessage && (
+                    <motion.div
+                      className="absolute -bottom-16 left-0 right-0 text-center"
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: [0, 1, 1, 0] }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 3 }}
+                    >
+                      <span className="font-mono text-xs text-primary/80 tracking-wider">
+                        {crypticMessage}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -348,30 +378,48 @@ export const RecursiveEngine = () => {
         />
       )}
 
-      {/* Ambient particle effect */}
+      {/* Ambient particle effect with mutation pulse */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(30)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute w-1 h-1 rounded-full"
             style={{
-              background: `hsl(${180 + depth * 30}, 100%, 60%)`,
+              background: `hsl(${180 + depth * 30}, 70%, 45%)`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
+              boxShadow: `0 0 10px hsl(${180 + depth * 30}, 70%, 45%)`,
             }}
             animate={{
-              y: [0, -100, 0],
-              opacity: [0, 1, 0],
-              scale: [0, 1.5, 0],
+              y: [0, -120, 0],
+              opacity: [0, 0.8, 0],
+              scale: envPulse > 0 ? [1, 2.5, 0] : [0, 1.2, 0],
             }}
             transition={{
-              duration: 5 + Math.random() * 5,
+              duration: 6 + Math.random() * 4,
               repeat: Infinity,
-              delay: Math.random() * 5,
+              delay: Math.random() * 6,
               ease: 'easeInOut',
             }}
           />
         ))}
+        
+        {/* Constellation drift pulse on mutation */}
+        {envPulse > 0 && (
+          <motion.div
+            key={envPulse}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: [0, 0.3, 0],
+              scale: [0.9, 1.05, 1],
+            }}
+            transition={{ duration: 1.5 }}
+            style={{
+              background: `radial-gradient(circle at center, hsl(${180 + depth * 30}, 70%, 20%) 0%, transparent 70%)`,
+            }}
+          />
+        )}
       </div>
     </div>
   );

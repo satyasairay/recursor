@@ -123,9 +123,9 @@ export class AudioEngine {
     const now = this.context.currentTime;
     const { depth, entropy, chaos, decayFactor } = params;
     
-    // Depth affects fundamental frequency and darkness
-    const baseFreq = 40 + depth * 8; // Descend into lower frequencies
-    const filterFreq = Math.max(200, 2000 - depth * 150); // Darker over time
+    // Depth affects fundamental frequency and darkness - enhanced descent feel
+    const baseFreq = Math.max(30, 45 - depth * 2); // Descend into much lower frequencies
+    const filterFreq = Math.max(150, 2000 - depth * 180); // More aggressive darkening
     
     // Update drone frequencies (smooth transitions)
     this.drones.forEach((drone, i) => {
@@ -144,12 +144,18 @@ export class AudioEngine {
       this.filter.Q.linearRampToValueAtTime(1 + entropy * 3, now + 0.5);
     }
     
-    // Update distortion (chaos and decay)
-    const distortionAmount = (1 - decayFactor) * 100 + chaos * 50;
+    // Update distortion (chaos and decay) - enhanced with depth
+    const distortionAmount = (1 - decayFactor) * 100 + chaos * 60 + depth * 5;
     if (this.distortion) {
       const newCurve = this.makeDistortionCurve(distortionAmount);
       // @ts-ignore - TypeScript strict mode issue with WaveShaperNode curve type
       this.distortion.curve = newCurve;
+    }
+    
+    // Update master volume - subtle increase with depth for presence
+    if (this.masterGain) {
+      const depthVolume = 0.15 + Math.min(depth * 0.015, 0.1);
+      this.masterGain.gain.linearRampToValueAtTime(depthVolume, now + 0.5);
     }
     
     // Update grain texture (glitchy when high entropy)

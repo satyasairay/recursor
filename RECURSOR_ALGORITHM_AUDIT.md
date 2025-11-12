@@ -1098,6 +1098,209 @@ DAMPING = 0.95                        // Velocity damping factor
 
 ---
 
+## PHASE 1.1: DEPTH RESTORATION PATCH
+
+**Implemented:** 2025-11-12  
+**Objective:** Transform passive clicking into immersive descent
+
+### REASONING FOR PATCH
+
+User disengagement detected due to:
+- **Static Recursion Loop:** Mutation feedback felt mechanical rather than environmental
+- **Tonal Mismatch:** Bright white cells contradicted dark cosmic theme
+- **Cognitive Disconnect:** Explicit instructions broke mystery and discovery
+- **Absence of Resonance:** No environmental response to user decisions
+
+The recursion grid existed in isolation — changes lacked weight, consequence, or atmosphere. Users reported feeling like they were "clicking boxes" rather than "descending into memory."
+
+### UPDATED ALGORITHMIC BEHAVIOR
+
+#### 1. Dark Cosmic Color System
+```
+FUNCTION getCellColor(value, depth, isSelected):
+  baseHue = BASE_HUE + depth * HUE_SHIFT_PER_DEPTH
+  
+  // Dark palette transformation
+  saturation = 70 - (value * 8)        // Mystery through desaturation
+  lightness = 15 + (value * 8)         // Range: 15-40% (dark cosmic)
+  
+  IF isSelected:
+    RETURN hsl(baseHue + 60, 85%, 45%)  // Cyan accent glow
+  
+  RETURN hsl(baseHue, saturation%, lightness%)
+  
+  // Color progression:
+  // Depth 0: Deep blue (hsl(180, 70%, 15%))
+  // Depth 5: Violet-blue (hsl(330, 62%, 23%))
+  // Depth 10+: Cyan-violet (hsl(480, 54%, 31%))
+```
+
+**Rationale:** Dark tones create atmospheric depth. Lightness never exceeds 40%, maintaining cosmic immersion. Saturation decreases with cell maturity, suggesting entropy and decay.
+
+#### 2. Environmental Feedback Loop
+```
+FUNCTION onMutation(pattern, depth):
+  totalMutations++
+  envPulse = NOW  // Timestamp trigger
+  
+  // Reactive systems cascade:
+  TRIGGER particleFieldPulse(envPulse, depth)
+  TRIGGER constellationDrift(envPulse, depth)
+  TRIGGER entropyCounterFlash(envPulse)
+  TRIGGER audioDeepening(depth)
+  
+  // Visual responses:
+  // - 30 particles burst outward (scale: 1 → 2.5 → 0)
+  // - Background constellation drifts (radial gradient pulse)
+  // - Entropy/Chaos counters briefly brighten (opacity: 0.7 → 1 → 0.7)
+  // - Ambient audio base frequency drops by 2 Hz per depth
+```
+
+**Rationale:** Every mutation creates environmental ripples. The system "notices" and responds. Feedback is subtle but pervasive — not gamified notifications, but atmospheric consequence.
+
+#### 3. Ambient Resonance Enhancement
+```
+FUNCTION updateAudioWithDepth(depth, entropy, chaos):
+  // Enhanced descent feel
+  baseFreq = max(30, 45 - depth * 2)           // Lower frequencies per depth
+  filterFreq = max(150, 2000 - depth * 180)    // More aggressive darkening
+  distortion = (1 - decay) * 100 + chaos * 60 + depth * 5
+  
+  // Master volume increases subtly with depth (presence without loudness)
+  masterVolume = 0.15 + min(depth * 0.015, 0.1)
+  
+  // Psychological effect:
+  // - Frequencies descend from 45 Hz → 30 Hz (subsonic rumble)
+  // - Filter cuts high frequencies more aggressively
+  // - Distortion accumulates with depth, creating "weight"
+  // - Volume presence increases to prevent silence = emptiness
+```
+
+**Rationale:** Audio must feel like *descending*, not leveling up. Lower frequencies = psychological depth. Increased distortion with depth = psychological pressure. Subtle volume increase = presence without aggression.
+
+#### 4. Micro-Reveal System (Cryptic Messages)
+```
+FUNCTION triggerCrypticMessage(mutationCount):
+  mutationsSinceLastMessage = mutationCount - lastTriggerCount
+  threshold = random(3, 5)  // Every 3-5 mutations
+  
+  IF mutationsSinceLastMessage >= threshold:
+    message = selectRandom(CRYPTIC_MESSAGES)
+    display(message, duration: 3000ms, fadeIn: 500ms, fadeOut: 500ms)
+    lastTriggerCount = mutationCount
+  
+  CRYPTIC_MESSAGES = [
+    "Something remembers you.",
+    "Patterns recur.",
+    "The void adjusts.",
+    "Memory fades, but not entirely.",
+    "You have been here before.",
+    "Deeper still.",
+    "The constellation shifts.",
+    "Time is not linear here.",
+    "Your choices echo.",
+    "Recursion intensifies.",
+    "The pattern recognizes itself.",
+    // ... 15 total messages
+  ]
+```
+
+**Rationale:** Mystery retention through sparse revelation. Messages appear without user input, creating sense of observation by system. 3-second duration prevents distraction but ensures absorption. No explanations, no context — only atmospheric hints that the system is aware.
+
+#### 5. Mystery Retention (Instruction Removal)
+```
+BEFORE:
+  "Select 3 cells to mutate the pattern"  // Explicit, tutorial-like
+  
+AFTER:
+  Visual progress indicators only:
+  - 3 dots below grid (hollow → filled with glow)
+  - Dots pulse when active (scale: 1 → 1.4 → 1)
+  - Cyan glow on filled dots (hsl(180, 70%, 50%))
+  - Hover glow on cells (0 0 40px + 0 0 60px)
+```
+
+**Rationale:** Discovery through light, not words. Users intuit through visual feedback. Hover glows guide attention without instructing. Pulsing dots create anticipation. No explicit teaching = preservation of mystery and exploration.
+
+### FEEDBACK MODEL ARCHITECTURE
+
+```
+USER ACTION (cell click)
+  ↓
+MUTATION TRIGGERED
+  ↓
+PARALLEL FEEDBACK SYSTEMS:
+├─ Visual: Particle burst (30 particles, radial outward)
+├─ Spatial: Constellation drift pulse (1.5s radial gradient)
+├─ Audio: Frequency descent + distortion increase
+├─ Data: Entropy/Chaos counters flash briefly
+└─ Narrative: Cryptic message (probabilistic, 3-5 mutation interval)
+  ↓
+ENVIRONMENTAL COHERENCE RESTORED
+```
+
+**Key Principle:** Feedback is *atmospheric*, not *informational*. The system doesn't tell you what happened — it *shows* through environmental response. Users feel immersed rather than instructed.
+
+### DESIGN INTENT
+
+> "To transform passive clicking into immersive descent."
+
+**Core Philosophy:**
+- **No Overexposure:** Dark palette prevents visual fatigue
+- **No Gamification:** No scores, no progress bars, no congratulations
+- **No Hand-Holding:** Discovery through environmental cues, not tutorials
+- **Eerie Deliberation:** Slow pace is intentional — recursion is meditation, not reaction
+- **Psychological Weight:** Each mutation should feel consequential, not casual
+
+**Emotional Trajectory:**
+```
+Depth 0-3:   Curiosity (dark, glowing, mysterious)
+Depth 4-7:   Immersion (audio deepens, messages appear)
+Depth 8-12:  Unease (environment responds, patterns recur)
+Depth 13+:   Descent (psychological weight, subsonic pressure)
+```
+
+### TECHNICAL IMPLEMENTATION NOTES
+
+**Color System:**
+- HSL-based for smooth hue transitions
+- Lightness capped at 40% (never approaches white)
+- Saturation decreases with value (entropy visual)
+
+**Audio Modulation:**
+- Web Audio API for real-time synthesis
+- Frequency range: 30-45 Hz (subsonic to low bass)
+- Distortion curve scales with depth + chaos + decay
+
+**Particle System:**
+- 30 ambient particles (increased from 20)
+- Pulse trigger on mutation via envPulse timestamp
+- Scale animation: 1 → 2.5 → 0 (burst then fade)
+- Glow effect via box-shadow (hsl-based)
+
+**Message Timing:**
+- Random interval 3-5 mutations (prevents predictability)
+- 3-second display duration (absorption without distraction)
+- Opacity animation: 0 → 1 → 1 → 0 (gradual)
+- Position: Below grid, near cryptic messages context
+
+### VALIDATION CRITERIA
+
+Patch successful if users report:
+- ✓ "Feels like descending, not progressing"
+- ✓ "The system knows I'm here"
+- ✓ "Darker, more mysterious now"
+- ✓ "I discover rather than being told"
+
+Patch failed if users report:
+- ✗ "Too dark, can't see cells"
+- ✗ "Doesn't feel different"
+- ✗ "Lost/confused without instructions"
+
+**Status:** Monitoring user feedback post-deployment.
+
+---
+
 ## SYSTEM INVARIANTS
 
 ```

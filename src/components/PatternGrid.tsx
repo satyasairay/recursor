@@ -53,12 +53,17 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
   const getCellColor = (value: number, index: number) => {
     const isSelected = selectedCells.includes(index);
     const baseHue = BASE_HUE + depth * HUE_SHIFT_PER_DEPTH;
-    const brightness = 50 + (value * 15);
+    
+    // Dark cosmic palette: deep blues, violets, cyans
+    // Saturation decreases with value for mystery
+    const saturation = 70 - (value * 8);
+    const lightness = 15 + (value * 8); // Much darker range (15-40%)
     
     if (isSelected) {
-      return `hsl(${baseHue + 50}, 100%, 70%)`;
+      // Selected cells glow with cyan accent
+      return `hsl(${baseHue + 60}, 85%, 45%)`;
     }
-    return `hsl(${baseHue}, 100%, ${brightness}%)`;
+    return `hsl(${baseHue}, ${saturation}%, ${lightness}%)`;
   };
 
   const gridSize = Math.ceil(Math.sqrt(pattern.length));
@@ -103,8 +108,8 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
               ease: 'easeOut',
             }}
             whileHover={!locked && !isRevealing ? { 
-              scale: 1.1,
-              boxShadow: `0 0 30px ${getCellColor(value, index)}`,
+              scale: 1.15,
+              boxShadow: `0 0 40px ${getCellColor(value, index)}, 0 0 60px ${getCellColor(value, index)}`,
             } : {}}
             whileTap={!locked && !isRevealing ? { scale: 0.95 } : {}}
           >
@@ -145,7 +150,7 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
         ))}
       </div>
 
-      {/* Selection progress */}
+      {/* Selection progress - visual only, no text */}
       {selectedCells.length > 0 && !locked && (
         <motion.div
           className="absolute -bottom-8 left-0 right-0 flex justify-center gap-2"
@@ -157,13 +162,15 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
               key={i}
               className="w-2 h-2 rounded-full"
               style={{
-                backgroundColor: i < selectedCells.length ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
+                backgroundColor: i < selectedCells.length ? 'hsl(180, 70%, 50%)' : 'hsl(220, 20%, 25%)',
+                boxShadow: i < selectedCells.length ? '0 0 10px hsl(180, 70%, 50%)' : 'none',
               }}
               animate={{
-                scale: i === selectedCells.length ? [1, 1.3, 1] : 1,
+                scale: i === selectedCells.length ? [1, 1.4, 1] : 1,
+                opacity: [0.6, 1, 0.6],
               }}
               transition={{
-                duration: 0.5,
+                duration: 1.5,
                 repeat: Infinity,
               }}
             />
