@@ -7,6 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArtifactGenerator, ArtifactType } from '@/lib/artifactGenerator';
 import { MemoryNode, RecursionSession } from '@/lib/types';
 import { toast } from 'sonner';
+import { usePremiumStatus } from '@/hooks/usePremiumStatus';
+import { PremiumGate } from './PremiumGate';
+import { PremiumBadge } from './PremiumBadge';
 
 interface ArtifactExportProps {
   nodes: MemoryNode[];
@@ -17,6 +20,7 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
   const [selectedType, setSelectedType] = useState<ArtifactType>('constellation');
   const [preview, setPreview] = useState<string>('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const { isPremium } = usePremiumStatus();
 
   useEffect(() => {
     generatePreview();
@@ -52,9 +56,13 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
   };
 
   const handleExport = (format: 'png' | 'svg') => {
+    // HD exports require premium
+    const width = isPremium ? 1920 : 800;
+    const height = isPremium ? 1080 : 600;
+    
     const generator = new ArtifactGenerator({ 
-      width: 1920, 
-      height: 1080,
+      width, 
+      height,
       theme 
     });
 
@@ -86,7 +94,8 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
       generator.download(filename, 'png');
     }
 
-    toast.success(`Exported ${selectedType} as ${format.toUpperCase()}`);
+    const quality = isPremium ? 'HD' : 'Standard';
+    toast.success(`Exported ${selectedType} as ${quality} ${format.toUpperCase()}`);
   };
 
   const artifactTypes = [
@@ -100,11 +109,14 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Export Artifacts</h2>
-        <p className="text-sm text-muted-foreground font-mono">
-          Generate visual representations of your recursive journey
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Export Artifacts</h2>
+          <p className="text-sm text-muted-foreground font-mono">
+            Generate visual representations of your recursive journey
+          </p>
+        </div>
+        {isPremium && <PremiumBadge />}
       </div>
 
       <Tabs value={selectedType} onValueChange={(v) => setSelectedType(v as ArtifactType)}>
@@ -168,7 +180,7 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
                         className="font-mono"
                       >
                         <Image className="w-4 h-4 mr-2" />
-                        Export PNG
+                        Export PNG {isPremium && '(HD)'}
                       </Button>
                       <Button
                         onClick={() => handleExport('svg')}
@@ -176,7 +188,7 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
                         className="font-mono"
                       >
                         <FileImage className="w-4 h-4 mr-2" />
-                        Export SVG
+                        Export SVG {isPremium && '(HD)'}
                       </Button>
                     </div>
                   </div>

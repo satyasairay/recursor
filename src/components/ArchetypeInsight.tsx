@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { submitAnonymousData, getArchetypeStats, ArchetypeResult, ArchetypeInfo } from '@/lib/archetypeEngine';
 import { toast } from 'sonner';
+import { usePremiumStatus } from '@/hooks/usePremiumStatus';
+import { PremiumGate } from './PremiumGate';
+import { PremiumBadge } from './PremiumBadge';
 
 export const ArchetypeInsight = () => {
   const [userArchetype, setUserArchetype] = useState<ArchetypeResult | null>(null);
@@ -13,6 +16,7 @@ export const ArchetypeInsight = () => {
   const [totalSessions, setTotalSessions] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const { isPremium } = usePremiumStatus();
 
   useEffect(() => {
     loadArchetypeStats();
@@ -70,14 +74,17 @@ export const ArchetypeInsight = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2">
-          <Brain className="w-6 h-6 text-primary" />
-          Cognitive Archetype Analysis
-        </h2>
-        <p className="text-sm text-muted-foreground font-mono">
-          Anonymous comparison with {totalSessions.toLocaleString()} recursive journeys
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2">
+            <Brain className="w-6 h-6 text-primary" />
+            Cognitive Archetype Analysis
+          </h2>
+          <p className="text-sm text-muted-foreground font-mono">
+            Anonymous comparison with {totalSessions.toLocaleString()} recursive journeys
+          </p>
+        </div>
+        {isPremium && <PremiumBadge />}
       </div>
 
       {/* Submit Section */}
@@ -107,8 +114,49 @@ export const ArchetypeInsight = () => {
         </Card>
       )}
 
-      {/* User Archetype Result */}
-      {userArchetype && (
+      {/* User Archetype Result - Premium Gated */}
+      {userArchetype && !isPremium && (
+        <PremiumGate
+          feature="Deep Archetype Analysis"
+          description="Unlock personalized cognitive insights, trait breakdown, and behavioral patterns unique to your archetype."
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Card className={`p-6 recursive-border bg-gradient-to-br ${getArchetypeColor(userArchetype.archetype)} text-white relative overflow-hidden`}>
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="text-5xl">{getArchetypeIcon(userArchetype.archetype)}</div>
+                  <div>
+                    <h3 className="text-2xl font-bold">The {userArchetype.archetype}</h3>
+                    <p className="text-white/80 font-mono text-sm">
+                      You think like {userArchetype.percentile}% of all users
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-mono">Rarity</span>
+                    <span className="font-bold">{userArchetype.percentile}%</span>
+                  </div>
+                  <Progress value={userArchetype.percentile} className="h-2 bg-white/20" />
+                </div>
+              </div>
+
+              <motion.div
+                className="absolute inset-0 bg-white/5"
+                animate={{ opacity: [0.3, 0.5, 0.3] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              />
+            </Card>
+          </motion.div>
+        </PremiumGate>
+      )}
+
+      {/* User Archetype Result - Premium Users */}
+      {userArchetype && isPremium && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
