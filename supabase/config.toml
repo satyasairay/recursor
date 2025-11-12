@@ -1,0 +1,7 @@
+project_id = "cjwbpknfcfdgaiiuedra"
+
+[functions.submit-pattern]
+verify_jwt = false
+
+[functions.get-archetypes]
+verify_jwt = false

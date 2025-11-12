@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
 import { MemoryConstellation } from '@/components/MemoryConstellation';
 import { ArtifactExport } from '@/components/ArtifactExport';
+import { ArchetypeInsight } from '@/components/ArchetypeInsight';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
 import { getSessionStats, getNodeStats, db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -148,24 +150,34 @@ const Memory = () => {
         )}
       </motion.div>
 
-      {/* Constellation */}
-      <motion.div
-        className="max-w-6xl mx-auto recursive-border rounded-xl p-8 bg-card/30 backdrop-blur-sm mb-8"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3 }}
-      >
-        <MemoryConstellation />
-      </motion.div>
-
-      {/* Artifact Export */}
+      {/* Tabs for different views */}
       <motion.div
         className="max-w-6xl mx-auto mb-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.3 }}
       >
-        <ArtifactExport nodes={nodes} sessions={sessions} />
+        <Tabs defaultValue="constellation" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="constellation" className="font-mono">Constellation</TabsTrigger>
+            <TabsTrigger value="archetypes" className="font-mono">Archetypes</TabsTrigger>
+            <TabsTrigger value="export" className="font-mono">Export</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="constellation">
+            <div className="recursive-border rounded-xl p-8 bg-card/30 backdrop-blur-sm">
+              <MemoryConstellation />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="archetypes">
+            <ArchetypeInsight />
+          </TabsContent>
+
+          <TabsContent value="export">
+            <ArtifactExport nodes={nodes} sessions={sessions} />
+          </TabsContent>
+        </Tabs>
       </motion.div>
 
       <Separator className="max-w-6xl mx-auto mb-8" />
