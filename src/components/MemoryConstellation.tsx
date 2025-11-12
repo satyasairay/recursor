@@ -41,15 +41,18 @@ export const MemoryConstellation = () => {
 
   const getNodeSize = (node: MemoryNode) => {
     // Size based on weight (decayed over time)
+    // With MIN_NODE_WEIGHT=0.3, range is [0.3, 1.0]
+    // Formula: radius = 3 + weight * 7 → range [5.1, 10]
     const currentWeight = applyWeightDecay(node.weight, node.lastAccessed);
-    return 3 + currentWeight * 8;
+    return 3 + currentWeight * 7;
   };
 
   const getNodeOpacity = (node: MemoryNode) => {
-    // Brightness based on lastAccessed
-    const daysSince = (Date.now() - node.lastAccessed) / (1000 * 60 * 60 * 24);
-    const brightness = Math.max(0.3, Math.min(1.0, 1.0 - daysSince * 0.1));
-    return brightness;
+    // Brightness based on decayed weight
+    // With MIN_NODE_WEIGHT=0.3, ensure nodes don't fade too much
+    // Formula: opacity = 0.2 + weight * 0.8 → range [0.44, 1.0]
+    const currentWeight = applyWeightDecay(node.weight, node.lastAccessed);
+    return 0.2 + currentWeight * 0.8;
   };
 
   const getConnectionThickness = (weight: number) => {

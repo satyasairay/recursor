@@ -23,7 +23,12 @@ import { MAX_CELL_STATE } from './constants';
  * Higher entropy = more chaos/randomness
  * Lower entropy = more order/structure
  * 
- * Range: 0 (all same values) to ~2 (maximum diversity)
+ * Formula: H = -Σ(p_i * log₂(p_i)) where p_i is probability of each state
+ * Range: 0 (all same values) to log₂(K) where K = number of possible states
+ * For K=4 states (MAX_CELL_STATE+1): max entropy = log₂(4) = 2 bits
+ * 
+ * @param pattern - Pattern to analyze
+ * @returns Shannon entropy in bits [0, log₂(K)]
  */
 export const calculateEntropy = (pattern: Pattern): number => {
   const frequencies = new Map<number, number>();
@@ -33,12 +38,13 @@ export const calculateEntropy = (pattern: Pattern): number => {
     frequencies.set(val, (frequencies.get(val) || 0) + 1);
   });
   
-  // Calculate Shannon entropy: -Σ(p * log2(p))
+  // Calculate Shannon entropy: H = -Σ(p * log₂(p))
   let entropy = 0;
   const total = pattern.length;
   
   frequencies.forEach(count => {
     const probability = count / total;
+    // Note: p * log₂(p) is negative, so we negate to get positive entropy
     entropy -= probability * Math.log2(probability);
   });
   
@@ -46,11 +52,18 @@ export const calculateEntropy = (pattern: Pattern): number => {
 };
 
 /**
- * Normalize entropy to 0-1 range for easier use.
- * Assumes max entropy of 2 bits (4 possible states).
+ * Normalize entropy to [0, 1] range for easier use in mutations.
+ * 
+ * H_normalized = H / log₂(K) where K = MAX_CELL_STATE + 1
+ * For K=4: H_normalized = H / log₂(4) = H / 2
+ * 
+ * @param entropy - Raw Shannon entropy
+ * @returns Normalized entropy in [0, 1]
  */
 export const normalizeEntropy = (entropy: number): number => {
-  return Math.min(entropy / 2, 1);
+  const K = MAX_CELL_STATE + 1; // Number of possible states (4)
+  const maxEntropy = Math.log2(K); // log₂(4) = 2 bits
+  return Math.min(entropy / maxEntropy, 1);
 };
 
 // ============================================================================
@@ -61,41 +74,53 @@ export const normalizeEntropy = (entropy: number): number => {
  * Detect repeated sequences (clusters) in a pattern.
  * Used to identify structure that should be preserved or disrupted.
  * 
+ * Optimized with Map-based subsequence tracking to avoid redundant scans.
+ * Caps window length to [2, 4] and early-exits when coverage exceeds threshold.
+ * 
  * @param pattern - Pattern to analyze
  * @param minLength - Minimum cluster length to detect (default: 2)
  * @returns Array of detected clusters
  */
 export const detectClusters = (pattern: Pattern, minLength: number = 2): PatternCluster[] => {
   const clusters: PatternCluster[] = [];
-  const patternStr = pattern.join(',');
   
-  // Try different cluster lengths
-  for (let len = minLength; len <= Math.floor(pattern.length / 2); len++) {
+  // Map of subsequence signature → positions for efficient lookup
+  const subsequenceMap = new Map<string, number[]>();
+  
+  // Cap maximum window length for efficiency (2-4 is safe for 3×3 grids)
+  const maxLength = Math.min(Math.floor(pattern.length / 2), 4);
+  
+  // Build subsequence map in single pass
+  for (let len = minLength; len <= maxLength; len++) {
     for (let i = 0; i <= pattern.length - len; i++) {
       const sequence = pattern.slice(i, i + len);
-      const sequenceStr = sequence.join(',');
+      const key = sequence.join(',');
       
-      // Find all occurrences of this sequence
-      const positions: number[] = [];
-      let pos = 0;
-      
-      while (pos <= pattern.length - len) {
-        const testSeq = pattern.slice(pos, pos + len).join(',');
-        if (testSeq === sequenceStr) {
-          positions.push(pos);
-        }
-        pos++;
+      if (!subsequenceMap.has(key)) {
+        subsequenceMap.set(key, []);
       }
+      subsequenceMap.get(key)!.push(i);
+    }
+  }
+  
+  // Convert map to clusters (only sequences that appear multiple times)
+  let totalCoverage = 0;
+  for (const [key, positions] of subsequenceMap.entries()) {
+    if (positions.length > 1) {
+      const sequence = key.split(',').map(Number);
+      const length = sequence.length;
       
-      // If sequence appears multiple times, it's a cluster
-      if (positions.length > 1) {
-        clusters.push({
-          sequence,
-          positions,
-          length: len,
-          frequency: positions.length,
-        });
-      }
+      clusters.push({
+        sequence,
+        positions,
+        length,
+        frequency: positions.length,
+      });
+      
+      totalCoverage += positions.length * length;
+      
+      // Early exit: stop if coverage exceeds pattern.length * 2
+      if (totalCoverage > pattern.length * 2) break;
     }
   }
   
@@ -212,11 +237,14 @@ export const generateBranches = (
  * Select the "best" branch based on pattern history.
  * Uses recent patterns to determine which evolution feels most "natural".
  * 
+ * Guards against NaN/empty candidates by defaulting to index 0.
+ * 
  * @param branches - Available branch options
  * @param recentPatterns - Recent pattern history
- * @returns Index of selected branch
+ * @returns Index of selected branch (always valid)
  */
 export const selectBranch = (branches: Pattern[], recentPatterns: number[]): number => {
+  // Guard: empty branches → default to 0
   if (branches.length === 0) return 0;
   if (branches.length === 1) return 0;
   
@@ -239,14 +267,23 @@ export const selectBranch = (branches: Pattern[], recentPatterns: number[]): num
     return affinity;
   });
   
-  // Select branch with highest affinity (with slight randomness)
-  const maxAffinity = Math.max(...affinities);
-  const candidates = affinities
+  // Guard: check for NaN in affinities
+  const validAffinities = affinities.map(a => isNaN(a) ? 0 : a);
+  const maxAffinity = Math.max(...validAffinities, 0);
+  
+  // Select branches with highest affinity (top 80%)
+  const candidates = validAffinities
     .map((a, i) => ({ index: i, affinity: a }))
-    .filter(c => c.affinity >= maxAffinity * 0.8); // Top 80%
+    .filter(c => c.affinity >= maxAffinity * 0.8);
+  
+  // Guard: empty candidates → default to index 0
+  if (candidates.length === 0) return 0;
   
   // Deterministic selection from candidates
-  const seed = recentPatterns.reduce((sum, val) => sum + val, 0);
+  const seed = recentPatterns.length > 0 
+    ? recentPatterns.reduce((sum, val) => sum + val, 0)
+    : 0;
+  
   return candidates[seed % candidates.length].index;
 };
 

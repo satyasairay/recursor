@@ -66,10 +66,13 @@ export class ArtifactGenerator {
     const centerY = this.config.height / 2;
     const maxRadius = Math.min(this.config.width, this.config.height) * 0.4;
 
-    // Position nodes in a radial layout
+    // Position nodes in a radial layout (deterministic)
     const positions = nodes.map((node, i) => {
       const angle = (i / nodes.length) * Math.PI * 2;
-      const distance = maxRadius * (0.5 + Math.random() * 0.5);
+      // Deterministic distance based on node signature (no Math.random)
+      const seed = node.patternSignature.split('-').reduce((sum, val) => sum + parseInt(val, 10), 0);
+      const distanceFactor = 0.5 + (seed % 50) / 100; // Range: [0.5, 1.0]
+      const distance = maxRadius * distanceFactor;
       return {
         x: centerX + Math.cos(angle) * distance,
         y: centerY + Math.sin(angle) * distance,
@@ -370,10 +373,13 @@ export class ArtifactGenerator {
       const maxRadius = Math.min(this.config.width, this.config.height) * 0.4;
       const rotation = (frame / frameCount) * Math.PI * 2;
 
-      // Position nodes with rotation
+      // Position nodes with rotation (deterministic)
       const positions = nodes.map((node, i) => {
         const angle = (i / nodes.length) * Math.PI * 2 + rotation;
-        const distance = maxRadius * (0.5 + Math.random() * 0.5);
+        // Deterministic distance based on node signature (no Math.random)
+        const seed = node.patternSignature.split('-').reduce((sum, val) => sum + parseInt(val, 10), 0);
+        const distanceFactor = 0.5 + (seed % 50) / 100; // Range: [0.5, 1.0]
+        const distance = maxRadius * distanceFactor;
         return {
           x: centerX + Math.cos(angle) * distance,
           y: centerY + Math.sin(angle) * distance,

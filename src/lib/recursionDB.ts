@@ -55,21 +55,21 @@ export const getSessionStats = async (): Promise<SessionStats> => {
 
 /**
  * Calculate decay factor for a session based on time since last access.
- * Fresh sessions have factor of 1.0, older sessions decay toward 0.5.
+ * Fresh sessions have factor of 1.0, older sessions decay toward MIN_NODE_WEIGHT.
  * 
  * @param lastAccessed - Timestamp of last access
  * @param currentTime - Current timestamp (defaults to now)
- * @returns Decay factor between 0.5 and 1.0
+ * @returns Decay factor between MIN_NODE_WEIGHT and 1.0
  */
 export const calculateDecayFactor = (lastAccessed: number, currentTime: number = Date.now()): number => {
   const daysSince = (currentTime - lastAccessed) / (1000 * 60 * 60 * 24);
   
-  // Exponential decay: starts at 1.0, decays to 0.5 over 7 days
+  // Exponential decay: starts at 1.0, decays to MIN_NODE_WEIGHT over 7 days
   const decayRate = 0.1; // ~10% per day
   const decayed = Math.exp(-decayRate * daysSince);
   
-  // Clamp between 0.5 and 1.0 (never fully disappear)
-  return Math.max(0.5, Math.min(1.0, decayed));
+  // Clamp between MIN_NODE_WEIGHT and 1.0 (deeper fade while maintaining presence)
+  return Math.max(MIN_NODE_WEIGHT, Math.min(1.0, decayed));
 };
 
 // ============================================================================

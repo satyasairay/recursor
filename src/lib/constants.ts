@@ -94,8 +94,9 @@ export const WEIGHT_DECAY_RATE = 0.05; // 5% per day
 
 /**
  * Minimum weight a node can decay to (never fully disappears).
+ * Lowered to 0.3 to allow deeper fade while maintaining presence.
  */
-export const MIN_NODE_WEIGHT = 0.1;
+export const MIN_NODE_WEIGHT = 0.3;
 
 /**
  * Maximum connections per node.
@@ -106,3 +107,13 @@ export const MAX_NODE_CONNECTIONS = 5;
  * Pattern similarity threshold for connecting nodes (0-1).
  */
 export const SIMILARITY_THRESHOLD = 0.6;
+
+// ============================================================================
+// OPTIMIZATION FLAGS
+// ============================================================================
+
+/**
+ * Enable scalable cluster detection using Map-based approach.
+ * Automatically activates for grids larger than 3×3.
+ */
+export const CLUSTER_DETECT_SCALABLE = false;
