@@ -348,6 +348,83 @@ export class ArtifactGenerator {
     return svg;
   }
 
+  // Animated constellation with rotation
+  generateAnimatedConstellation(
+    nodes: MemoryNode[],
+    frameCount: number = 60,
+    onProgress?: (frame: number) => void
+  ): string[] {
+    const frames: string[] = [];
+    
+    for (let frame = 0; frame < frameCount; frame++) {
+      this.clear();
+      
+      if (nodes.length === 0) {
+        this.drawEmptyState('No memories to visualize');
+        frames.push(this.canvas.toDataURL('image/png'));
+        continue;
+      }
+
+      const centerX = this.config.width / 2;
+      const centerY = this.config.height / 2;
+      const maxRadius = Math.min(this.config.width, this.config.height) * 0.4;
+      const rotation = (frame / frameCount) * Math.PI * 2;
+
+      // Position nodes with rotation
+      const positions = nodes.map((node, i) => {
+        const angle = (i / nodes.length) * Math.PI * 2 + rotation;
+        const distance = maxRadius * (0.5 + Math.random() * 0.5);
+        return {
+          x: centerX + Math.cos(angle) * distance,
+          y: centerY + Math.sin(angle) * distance,
+          node,
+        };
+      });
+
+      // Draw pulsing connections
+      this.ctx.strokeStyle = this.theme.muted + '40';
+      this.ctx.lineWidth = 1 + Math.sin(frame / 10) * 0.5;
+      positions.forEach((pos) => {
+        pos.node.connections.forEach(connIdx => {
+          if (connIdx < positions.length) {
+            const target = positions[connIdx];
+            this.ctx.beginPath();
+            this.ctx.moveTo(pos.x, pos.y);
+            this.ctx.lineTo(target.x, target.y);
+            this.ctx.stroke();
+          }
+        });
+      });
+
+      // Draw pulsing nodes
+      positions.forEach(({ x, y, node }) => {
+        const size = (3 + node.weight * 15) * (1 + Math.sin(frame / 15) * 0.2);
+        const age = Date.now() - node.lastAccessed;
+        const brightness = Math.max(0.3, 1 - age / (1000 * 60 * 60 * 24 * 30));
+
+        // Animated glow
+        const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, size * 3);
+        gradient.addColorStop(0, this.theme.primary + Math.floor(brightness * 255).toString(16).padStart(2, '0'));
+        gradient.addColorStop(1, this.theme.primary + '00');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(x - size * 3, y - size * 3, size * 6, size * 6);
+
+        // Node
+        this.ctx.fillStyle = this.theme.primary;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, size, 0, Math.PI * 2);
+        this.ctx.fill();
+      });
+
+      this.drawTitle('Memory Constellation', nodes.length);
+      frames.push(this.canvas.toDataURL('image/png'));
+      
+      if (onProgress) onProgress(frame);
+    }
+    
+    return frames;
+  }
+
   download(filename: string, format: 'png' | 'svg', svgContent?: string) {
     const link = document.createElement('a');
     

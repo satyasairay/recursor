@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PatternGrid } from './PatternGrid';
 import { RecursionPortal } from './RecursionPortal';
+import { ReflectionModal } from './ReflectionModal';
 import { db, evolvePattern, calculateDecayFactor, createMemoryNode, decayAllNodes } from '@/lib/recursionDB';
 import { Button } from './ui/button';
 import { RecursionSession, Pattern } from '@/lib/types';
@@ -19,6 +20,8 @@ export const RecursiveEngine = () => {
   const [showPortal, setShowPortal] = useState(true);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showReflection, setShowReflection] = useState(false);
+  const [completedSessionId, setCompletedSessionId] = useState<number | null>(null);
   
   // Ambient audio system
   const { isEnabled: audioEnabled, toggleAudio, updateParams } = useAmbientAudio();
@@ -165,10 +168,18 @@ export const RecursiveEngine = () => {
         
         // Final achievement check
         await checkAchievements(sessionId);
+        
+        // Show reflection modal
+        setCompletedSessionId(sessionId);
+        setShowReflection(true);
       }
     }
+  };
 
-    // Start new session
+  const handleReflectionClose = async () => {
+    setShowReflection(false);
+    
+    // Start new session after reflection
     setDepth(0);
     setPattern(INITIAL_PATTERN);
     setShowPortal(true);
@@ -292,6 +303,16 @@ export const RecursiveEngine = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Reflection modal */}
+      {completedSessionId && (
+        <ReflectionModal
+          sessionId={completedSessionId}
+          depth={depth}
+          open={showReflection}
+          onClose={handleReflectionClose}
+        />
+      )}
 
       {/* Ambient particle effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

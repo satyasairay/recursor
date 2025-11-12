@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Pattern } from '@/lib/types';
 import { CELLS_TO_SELECT, MAX_CELL_STATE, BASE_HUE, HUE_SHIFT_PER_DEPTH, CELL_REVEAL_DELAY } from '@/lib/constants';
+import { DecayParticles } from './DecayParticles';
 
 interface PatternGridProps {
   pattern: Pattern;
@@ -13,6 +14,7 @@ interface PatternGridProps {
 export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }: PatternGridProps) => {
   const [selectedCells, setSelectedCells] = useState<number[]>([]);
   const [isRevealing, setIsRevealing] = useState(true);
+  const [decayTriggers, setDecayTriggers] = useState<Record<number, number>>({});
 
   useEffect(() => {
     // Reveal animation
@@ -35,6 +37,14 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
       const newPattern = pattern.map((val, i) => 
         newSelected.includes(i) ? (val + 1) % (MAX_CELL_STATE + 1) : val
       );
+      
+      // Trigger decay particles for selected cells
+      const triggers: Record<number, number> = {};
+      newSelected.forEach(i => {
+        triggers[i] = Date.now();
+      });
+      setDecayTriggers(triggers);
+      
       onPatternChange(newPattern);
       setSelectedCells([]);
     }
@@ -55,6 +65,17 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
 
   return (
     <div className="relative">
+      {/* Decay particles overlay */}
+      {Object.entries(decayTriggers).map(([index, trigger]) => (
+        <DecayParticles
+          key={`${index}-${trigger}`}
+          cellIndex={parseInt(index)}
+          gridSize={gridSize}
+          color={getCellColor(pattern[parseInt(index)], parseInt(index))}
+          trigger={trigger}
+        />
+      ))}
+      
       {/* Grid container */}
       <div 
         className="grid gap-2 p-4 recursive-border rounded-xl"

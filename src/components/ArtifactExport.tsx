@@ -20,11 +20,30 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
   const [selectedType, setSelectedType] = useState<ArtifactType>('constellation');
   const [preview, setPreview] = useState<string>('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationFrames, setAnimationFrames] = useState<string[]>([]);
+  const [currentFrame, setCurrentFrame] = useState(0);
   const { isPremium } = usePremiumStatus();
 
   useEffect(() => {
     generatePreview();
   }, [selectedType, nodes, sessions, theme]);
+
+  // Animate preview for constellation
+  useEffect(() => {
+    if (selectedType === 'constellation' && animationFrames.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentFrame(f => (f + 1) % animationFrames.length);
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [selectedType, animationFrames]);
+
+  useEffect(() => {
+    if (animationFrames.length > 0 && currentFrame < animationFrames.length) {
+      setPreview(animationFrames[currentFrame]);
+    }
+  }, [currentFrame, animationFrames]);
 
   const generatePreview = () => {
     const generator = new ArtifactGenerator({ 
@@ -37,8 +56,13 @@ export const ArtifactExport = ({ nodes, sessions }: ArtifactExportProps) => {
     
     switch (selectedType) {
       case 'constellation':
-        canvas = generator.generateConstellation(nodes);
-        break;
+        // Generate animated preview
+        setIsAnimating(true);
+        const frames = generator.generateAnimatedConstellation(nodes, 30);
+        setAnimationFrames(frames);
+        setCurrentFrame(0);
+        setIsAnimating(false);
+        return;
       case 'depth-map':
         canvas = generator.generateDepthMap(sessions);
         break;
