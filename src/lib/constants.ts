@@ -56,6 +56,155 @@ export const PORTAL_TRANSITION_DURATION = 1000;
 export const CELL_REVEAL_DELAY = 50;
 
 // ============================================================================
+// PATTERN FIELD VISUAL CONSTANTS
+// ============================================================================
+
+/**
+ * Minimum number of nodes in the pattern field.
+ */
+export const MIN_NODE_COUNT = 7;
+
+/**
+ * Maximum number of nodes in the pattern field.
+ */
+export const MAX_NODE_COUNT = 11;
+
+/**
+ * Base radius for node placement (viewBox units).
+ */
+export const NODE_BASE_RADIUS = 20;
+
+/**
+ * Radius per depth increment (viewBox units).
+ */
+export const NODE_RADIUS_PER_DEPTH = 1.2;
+
+/**
+ * Minimum node radius (viewBox units).
+ */
+export const NODE_MIN_RADIUS = 16;
+
+/**
+ * Maximum node radius (viewBox units).
+ */
+export const NODE_MAX_RADIUS = 42;
+
+/**
+ * Base glow radius for nodes (viewBox units).
+ */
+export const NODE_GLOW_BASE = 2.5;
+
+/**
+ * Glow radius multiplier for luminosity.
+ */
+export const NODE_GLOW_LUMINOSITY_MULT = 4.5;
+
+/**
+ * Glow radius multiplier for distortion.
+ */
+export const NODE_GLOW_DISTORTION_MULT = 3;
+
+/**
+ * Base opacity for nodes.
+ */
+export const NODE_OPACITY_BASE = 0.25;
+
+/**
+ * Opacity multiplier for luminosity.
+ */
+export const NODE_OPACITY_LUMINOSITY_MULT = 0.65;
+
+/**
+ * Base hue for nodes.
+ */
+export const NODE_BASE_HUE = 190;
+
+/**
+ * Hue shift per depth.
+ */
+export const NODE_HUE_PER_DEPTH = 10;
+
+/**
+ * Hue shift per distortion unit.
+ */
+export const NODE_HUE_PER_DISTORTION = 40;
+
+/**
+ * Base saturation for nodes.
+ */
+export const NODE_SATURATION = 75;
+
+/**
+ * Base lightness for nodes.
+ */
+export const NODE_LIGHTNESS_BASE = 45;
+
+/**
+ * Lightness multiplier for luminosity.
+ */
+export const NODE_LIGHTNESS_LUMINOSITY_MULT = 25;
+
+/**
+ * Field bounds (viewBox units).
+ */
+export const FIELD_BOUNDS = { min: 8, max: 92 };
+
+/**
+ * Depth gradient base hue.
+ */
+export const FIELD_DEPTH_HUE_BASE = 195;
+
+/**
+ * Depth gradient hue per depth.
+ */
+export const FIELD_DEPTH_HUE_PER_DEPTH = 8;
+
+/**
+ * Depth gradient secondary hue base.
+ */
+export const FIELD_DEPTH_HUE_SECONDARY_BASE = 205;
+
+/**
+ * Depth gradient secondary hue per depth.
+ */
+export const FIELD_DEPTH_HUE_SECONDARY_PER_DEPTH = 6;
+
+/**
+ * Resonance pulse stroke hue base.
+ */
+export const PULSE_HUE_BASE = 200;
+
+/**
+ * Resonance pulse hue per depth.
+ */
+export const PULSE_HUE_PER_DEPTH = 12;
+
+/**
+ * Resonance pulse stroke saturation.
+ */
+export const PULSE_SATURATION = 80;
+
+/**
+ * Resonance pulse stroke lightness.
+ */
+export const PULSE_LIGHTNESS = 70;
+
+/**
+ * Resonance pulse stroke opacity.
+ */
+export const PULSE_OPACITY = 0.4;
+
+/**
+ * Resonance pulse maximum radius (viewBox units).
+ */
+export const PULSE_MAX_RADIUS = 48;
+
+/**
+ * Resonance pulse duration (ms).
+ */
+export const PULSE_DURATION = 1200;
+
+// ============================================================================
 // SESSION CONSTANTS
 // ============================================================================
 

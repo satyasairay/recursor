@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PatternGrid } from './PatternGrid';
 import { PatternField } from './PatternField';
 import { RecursionPortal } from './RecursionPortal';
 import { ReflectionModal } from './ReflectionModal';
@@ -10,15 +9,19 @@ import { RecursionSession, Pattern } from '@/lib/types';
 import { INITIAL_PATTERN, PORTAL_TRANSITION_DURATION, COMPLETION_THRESHOLD } from '@/lib/constants';
 import { analyzePattern } from '@/lib/mutationEngine';
 import { useAmbientAudio } from '@/hooks/useAmbientAudio';
-import { useCrypticMessages } from '@/hooks/useCrypticMessages';
 import { Volume2, VolumeX } from 'lucide-react';
 import { checkAchievements } from '@/lib/achievementEngine';
 import { cloudSync } from '@/lib/cloudSync';
 import { useAuth } from '@/hooks/useAuth';
+import { validatePattern } from '@/lib/regressionGuards';
 
+/**
+ * RecursiveEngine - Core recursion loop orchestrator
+ * 
+ * Owns ALL logic: mutation, depth progression, memory writes, session tracking.
+ * PatternField is pure presentation layer that receives (pattern, depth, memory, mutationCount).
+ */
 export const RecursiveEngine = () => {
-  const useAbstractField = (import.meta.env?.VITE_ABSTRACT_FIELD ?? 'true') !== 'false';
-  const PatternSurface = useAbstractField ? PatternField : PatternGrid;
   const [depth, setDepth] = useState(0);
   const [pattern, setPattern] = useState<Pattern>(INITIAL_PATTERN);
   const [sessionStart, setSessionStart] = useState(Date.now());
@@ -37,21 +40,9 @@ export const RecursiveEngine = () => {
   
   // Ambient audio system
   const { isEnabled: audioEnabled, toggleAudio, updateParams } = useAmbientAudio();
-  
-  // Cryptic message system
-  const crypticMessage = useCrypticMessages(totalMutations);
 
   const analysis = useMemo(() => analyzePattern(pattern, depth, 1.0), [pattern, depth]);
   const sessionSignature = useMemo(() => computeSignature(pattern), [pattern]);
-  const metrics = useMemo(
-    () => [
-      { label: 'DEPTH', value: depth.toString().padStart(2, '0'), emphasis: clamp(depth / 12, 0, 1) },
-      { label: 'RESONANCE', value: formatValue(analysis.normalizedEntropy), emphasis: clamp(analysis.normalizedEntropy, 0, 1) },
-      { label: 'CHAOS', value: formatValue(analysis.mutationWeights.chaos), emphasis: clamp(analysis.mutationWeights.chaos, 0, 1) },
-      { label: 'SIGNATURE', value: formatSignature(sessionSignature), emphasis: ((sessionSignature % 37) / 37) },
-    ],
-    [depth, analysis, sessionSignature]
-  );
   const contours = useMemo(() => {
     const layers = 5;
     return Array.from({ length: layers }).map((_, index) => {
@@ -171,55 +162,83 @@ export const RecursiveEngine = () => {
     }, PORTAL_TRANSITION_DURATION);
   };
 
+  /**
+   * REGRESSION GUARANTEE: This is the ONLY function that can:
+   * - Create memory nodes (createMemoryNode)
+   * - Update sessions (db.sessions.update)
+   * - Mutate depth (setDepth - only via handleEnterPortal)
+   * - Check achievements (checkAchievements)
+   * - Sync to cloud (cloudSync)
+   * 
+   * PatternField CANNOT call these functions directly.
+   * PatternField can ONLY call this function via onPatternChange callback.
+   * 
+   * INVARIANT: All memory writes, session updates, and depth changes
+   * must flow through RecursiveEngine, never through PatternField.
+   */
   const handlePatternChange = async (newPattern: number[]) => {
+    // REGRESSION GUARD: Validate pattern at engine boundary
+    try {
+      validatePattern(newPattern);
+    } catch (error) {
+      console.error('[RecursiveEngine] Pattern validation failed:', error);
+      return;
+    }
+
     setPattern(newPattern);
     setInteractionCount(c => c + 1);
     setTotalMutations(m => m + 1);
     
-    // Trigger environmental pulse
+    // Trigger environmental pulse (visual feedback only)
     setEnvPulse(value => value + 1);
 
     // Create memory node for this pattern change
     if (sessionId) {
-      await createMemoryNode(newPattern, depth, sessionId);
+      try {
+        await createMemoryNode(newPattern, depth, sessionId);
       
-      // Record decision in session
-      const session = await db.sessions.get(sessionId);
-      if (session) {
-        const updatedDecisions = [...session.decisions, `pattern-${depth}-${Date.now()}`];
-        const updatedPatterns = [...session.patterns, ...newPattern];
-        const updates = {
-          decisions: updatedDecisions,
-          patterns: updatedPatterns,
-          depth: depth,
-          metadata: {
-            duration: session.metadata.duration,
-            interactionCount: interactionCount + 1,
-            uniquePatterns: new Set(updatedPatterns).size,
+        // Record decision in session
+        const session = await db.sessions.get(sessionId);
+        if (session) {
+          const updatedDecisions = [...session.decisions, `pattern-${depth}-${Date.now()}`];
+          const updatedPatterns = [...session.patterns, ...newPattern];
+          const updates = {
+            decisions: updatedDecisions,
+            patterns: updatedPatterns,
+            depth: depth,
+            metadata: {
+              duration: session.metadata.duration,
+              interactionCount: interactionCount + 1,
+              uniquePatterns: new Set(updatedPatterns).size,
+            }
+          };
+          
+          await db.sessions.update(sessionId, updates);
+          
+          // Sync to cloud if authenticated
+          if (user && cloudSessionId) {
+            await cloudSync.updateSession(cloudSessionId, updates);
+            await cloudSync.savePattern(cloudSessionId, newPattern, depth);
           }
-        };
-        
-        await db.sessions.update(sessionId, updates);
-        
-        // Sync to cloud if authenticated
-        if (user && cloudSessionId) {
-          await cloudSync.updateSession(cloudSessionId, updates);
-          await cloudSync.savePattern(cloudSessionId, newPattern, depth);
         }
-      }
-      
-      // Check for achievements (silent)
-      const achievementCodes = await checkAchievements(sessionId);
-      
-      // Sync achievements to cloud
-      if (user && cloudSessionId && achievementCodes.length > 0) {
-        for (const code of achievementCodes) {
-          await cloudSync.saveAchievement(cloudSessionId, code);
+        
+        // Check for achievements (silent)
+        const achievementCodes = await checkAchievements(sessionId);
+        
+        // Sync achievements to cloud
+        if (user && cloudSessionId && achievementCodes.length > 0) {
+          for (const code of achievementCodes) {
+            await cloudSync.saveAchievement(cloudSessionId, code);
+          }
         }
+      } catch (error) {
+        console.error('[RecursiveEngine] Error in handlePatternChange:', error);
+        // Continue execution - don't block user interaction on persistence errors
       }
     }
 
     // Check if pattern is "complete" (all values >= COMPLETION_THRESHOLD)
+    // This logic is owned by RecursiveEngine, not PatternField
     const isComplete = newPattern.every(v => v >= COMPLETION_THRESHOLD);
     if (isComplete) {
       setShowPortal(true);
@@ -281,37 +300,12 @@ export const RecursiveEngine = () => {
           <Button
             onClick={handleReset}
             variant="outline"
-            className="font-mono text-[10px] sm:text-xs px-2 sm:px-4 h-8 sm:h-9"
+            className="font-mono text-xs"
+            size="icon"
           >
-            <span className="hidden sm:inline">RESET MEMORY</span>
-            <span className="sm:hidden">RESET</span>
+            ⟲
           </Button>
         )}
-      </motion.div>
-
-      {/* Metric overlay */}
-      <motion.div
-        className="absolute top-4 left-4 sm:top-8 sm:left-8 px-3 sm:px-4 py-2.5 sm:py-3 border border-primary/10 bg-background/60 backdrop-blur-xl rounded-lg shadow-sm max-w-[220px]"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        {metrics.map(metric => {
-          const duration = 4 + metric.emphasis * 2;
-          return (
-            <div key={metric.label} className="flex items-center justify-between gap-4">
-              <span className="font-mono text-[10px] tracking-[0.32em] text-muted-foreground/80">
-                {metric.label}
-              </span>
-              <motion.span
-                className="font-mono text-xs text-primary"
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                {metric.value}
-              </motion.span>
-            </div>
-          );
-        })}
       </motion.div>
 
       {/* Main content area */}
@@ -342,31 +336,13 @@ export const RecursiveEngine = () => {
               transition={{ duration: 0.6 }}
               className="flex flex-col items-center gap-8"
             >
-              <div className="relative">
-                <PatternSurface
-                  pattern={pattern}
-                  onPatternChange={handlePatternChange}
-                  depth={depth}
-                  locked={isTransitioning}
-                />
-                
-                {/* Cryptic message overlay */}
-                <AnimatePresence>
-                  {crypticMessage && (
-                    <motion.div
-                      className="absolute -bottom-16 left-0 right-0 text-center"
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: [0, 1, 1, 0] }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 3 }}
-                    >
-                      <span className="font-mono text-xs text-primary/80 tracking-wider">
-                        {crypticMessage}
-                      </span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <PatternField
+                pattern={pattern}
+                onPatternChange={handlePatternChange}
+                depth={depth}
+                locked={isTransitioning}
+                mutationCount={totalMutations}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -429,19 +405,12 @@ export const RecursiveEngine = () => {
   );
 };
 
+/**
+ * Computes deterministic signature from pattern.
+ * Used for visual contour generation (ambient field).
+ * Pure function: f(pattern) → number
+ */
 function computeSignature(pattern: Pattern): number {
+  if (!Array.isArray(pattern) || pattern.length === 0) return 0;
   return pattern.reduce((sum, value, index) => sum + (value + 1) * (index + 1), 0);
-}
-
-function formatValue(value: number): string {
-  return value.toFixed(2);
-}
-
-function formatSignature(value: number): string {
-  const hex = Math.abs(value).toString(16).toUpperCase();
-  return hex.slice(-6).padStart(6, '0');
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
