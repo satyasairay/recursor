@@ -14,6 +14,7 @@ import { checkAchievements } from '@/lib/achievementEngine';
 import { cloudSync } from '@/lib/cloudSync';
 import { useAuth } from '@/hooks/useAuth';
 import { validatePattern } from '@/lib/regressionGuards';
+import { useCrypticMessages } from '@/hooks/useCrypticMessages';
 
 /**
  * RecursiveEngine - Core recursion loop orchestrator
@@ -43,6 +44,9 @@ export const RecursiveEngine = () => {
 
   const analysis = useMemo(() => analyzePattern(pattern, depth, 1.0), [pattern, depth]);
   const sessionSignature = useMemo(() => computeSignature(pattern), [pattern]);
+  const [branchPulseTriggered, setBranchPulseTriggered] = useState(false);
+  const crypticMessage = useCrypticMessages(totalMutations, sessionSignature);
+  
   const contours = useMemo(() => {
     const layers = 5;
     return Array.from({ length: layers }).map((_, index) => {
@@ -149,6 +153,8 @@ export const RecursiveEngine = () => {
     const enableBranching = (depth + 1) % 3 === 0 && depth > 0;
     if (enableBranching && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('recursor-branch-pulse'));
+      setBranchPulseTriggered(true);
+      setTimeout(() => setBranchPulseTriggered(false), 150);
     }
 
     // Evolve pattern using sophisticated mutation engine
@@ -281,9 +287,50 @@ export const RecursiveEngine = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 relative">
+      {/* Minimal presence UI - top-left vertical strip (fixed anchor) */}
+      <div
+        className="absolute top-4 left-4 sm:top-8 sm:left-8 flex flex-col gap-3 z-10"
+        style={{ position: 'fixed' }}
+      >
+        {/* Portal icon */}
+        <button
+          onClick={showPortal ? handleEnterPortal : undefined}
+          disabled={!showPortal || isTransitioning}
+          className="text-2xl opacity-20 hover:opacity-100 transition-opacity disabled:opacity-10 disabled:cursor-not-allowed"
+          style={{ 
+            transition: 'opacity 0.2s ease',
+            transform: 'none', // No scale transforms to prevent jitter
+          }}
+        >
+          ∞
+        </button>
+        
+        {/* Memory constellation view (placeholder - can be connected later) */}
+        <button
+          className="text-2xl opacity-20 hover:opacity-100 transition-opacity"
+          style={{ 
+            transition: 'opacity 0.2s ease',
+            transform: 'none',
+          }}
+        >
+          ◌
+        </button>
+        
+        {/* Session signature glyph */}
+        <div
+          className="text-2xl opacity-20 hover:opacity-100 transition-opacity"
+          style={{ 
+            transition: 'opacity 0.2s ease',
+            transform: 'none',
+          }}
+        >
+          ☍
+        </div>
+      </div>
+
       {/* Audio + Reset controls */}
       <motion.div
-        className="absolute top-4 right-4 sm:top-8 sm:right-8 flex gap-2"
+        className="absolute top-4 right-4 sm:top-8 sm:right-8 flex gap-2 z-10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
@@ -295,7 +342,7 @@ export const RecursiveEngine = () => {
         >
           {audioEnabled ? <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" /> : <VolumeX className="w-3 h-3 sm:w-4 sm:h-4" />}
         </Button>
-        
+
         {depth > 0 && (
           <Button
             onClick={handleReset}
@@ -308,41 +355,37 @@ export const RecursiveEngine = () => {
         )}
       </motion.div>
 
-      {/* Main content area */}
-      <div className="relative w-full max-w-2xl">
-        <AnimatePresence mode="wait">
-          {showPortal ? (
+      {/* Main content area - PatternField always visible, portal overlays */}
+      <div className="absolute inset-0 w-full h-full">
+        {/* PatternField always renders (provides ambient background) */}
+        <PatternField
+          pattern={pattern}
+          onPatternChange={handlePatternChange}
+          depth={depth}
+          locked={isTransitioning || showPortal}
+          mutationCount={totalMutations}
+          entropy={analysis.normalizedEntropy}
+          showBranchPulse={branchPulseTriggered}
+        />
+
+        {/* Portal overlays when active */}
+        <AnimatePresence>
+          {showPortal && (
             <motion.div
               key="portal"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.2 }}
               transition={{ duration: 0.6 }}
-              className="flex flex-col items-center gap-12"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
             >
-              <RecursionPortal
-                depth={depth}
-                onEnter={handleEnterPortal}
-                isActive={!isTransitioning}
-              />
-
-            </motion.div>
-          ) : (
-            <motion.div
-              key="pattern"
-              initial={{ opacity: 0, scale: 0.8, rotateX: -90 }}
-              animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-              exit={{ opacity: 0, scale: 0.8, rotateX: 90 }}
-              transition={{ duration: 0.6 }}
-              className="flex flex-col items-center gap-8"
-            >
-              <PatternField
-                pattern={pattern}
-                onPatternChange={handlePatternChange}
-                depth={depth}
-                locked={isTransitioning}
-                mutationCount={totalMutations}
-              />
+              <div className="pointer-events-auto">
+                <RecursionPortal
+                  depth={depth}
+                  onEnter={handleEnterPortal}
+                  isActive={!isTransitioning}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -357,6 +400,21 @@ export const RecursiveEngine = () => {
           onClose={handleReflectionClose}
         />
       )}
+
+      {/* Cryptic pulse message */}
+      <AnimatePresence>
+        {crypticMessage && (
+          <motion.div
+            className="absolute bottom-4 left-4 sm:bottom-8 sm:left-8 text-sm opacity-60 font-mono z-10"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 0.6, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.3 }}
+          >
+            {crypticMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Deterministic ambient field */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

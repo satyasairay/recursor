@@ -62,12 +62,12 @@ export const CELL_REVEAL_DELAY = 50;
 /**
  * Minimum number of nodes in the pattern field.
  */
-export const MIN_NODE_COUNT = 7;
+export const MIN_NODE_COUNT = 20;
 
 /**
  * Maximum number of nodes in the pattern field.
  */
-export const MAX_NODE_COUNT = 11;
+export const MAX_NODE_COUNT = 40;
 
 /**
  * Base radius for node placement (viewBox units).

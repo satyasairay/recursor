@@ -1,91 +1,62 @@
 /**
- * PatternField - Pure presentation layer for pattern visualization
+ * PatternField - Ambient interactive field with floating nodes
  * 
- * This component is 100% presentation-only. It receives (pattern, depth, memory, mutationCount)
- * and renders a deterministic visual field. All logic (mutation, depth, memory writes) is owned
- * by RecursiveEngine.
+ * Pure presentation layer: receives (pattern, depth, memory, mutationCount)
+ * and renders a living field of floating nodes that respond to state.
  * 
- * Deterministic behavior:
- * - Node count: f(pattern signature) → 7-11 nodes
- * - Node positions: f(pattern, depth, historyNodes) → deterministic placement
- * - Luminosity: f(cell value, memory) → deterministic brightness
- * - Distortion: f(historyNodes, depth) → deterministic warping
- * - Pulse phase: f(nodeIndex, pattern signature) → deterministic timing
- * 
- * No randomness. All visual output is a pure function of inputs.
+ * No grids, no labels, no UI. Only life, presence, and memory.
  */
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Pattern } from '@/lib/types';
 import {
-  CELLS_TO_SELECT,
   MAX_CELL_STATE,
   MIN_NODE_COUNT,
-  NODE_BASE_RADIUS,
-  NODE_RADIUS_PER_DEPTH,
-  NODE_MIN_RADIUS,
-  NODE_MAX_RADIUS,
-  NODE_GLOW_BASE,
-  NODE_GLOW_LUMINOSITY_MULT,
-  NODE_GLOW_DISTORTION_MULT,
-  NODE_OPACITY_BASE,
-  NODE_OPACITY_LUMINOSITY_MULT,
+  MAX_NODE_COUNT,
   NODE_BASE_HUE,
   NODE_HUE_PER_DEPTH,
-  NODE_HUE_PER_DISTORTION,
   NODE_SATURATION,
-  NODE_LIGHTNESS_BASE,
-  NODE_LIGHTNESS_LUMINOSITY_MULT,
   FIELD_BOUNDS,
-  FIELD_DEPTH_HUE_BASE,
-  FIELD_DEPTH_HUE_PER_DEPTH,
-  FIELD_DEPTH_HUE_SECONDARY_BASE,
-  FIELD_DEPTH_HUE_SECONDARY_PER_DEPTH,
-  PULSE_HUE_BASE,
-  PULSE_HUE_PER_DEPTH,
-  PULSE_SATURATION,
-  PULSE_LIGHTNESS,
-  PULSE_OPACITY,
-  PULSE_MAX_RADIUS,
-  PULSE_DURATION,
 } from '@/lib/constants';
 import { db } from '@/lib/recursionDB';
-
 import { validatePattern, validateDepth, validateMutationCount, type PatternChangeCallback } from '@/lib/regressionGuards';
+import { analyzePattern } from '@/lib/mutationEngine';
+import { MemoryLattice } from './MemoryLattice';
 
-/**
- * PatternField Props - Strictly typed to prevent engine mutation
- * 
- * REGRESSION GUARANTEE: PatternField can ONLY:
- * - Receive read-only pattern, depth, mutationCount
- * - Emit onPatternChange(newPattern) callback
- * - NEVER mutate depth, sessionId, or memory directly
- */
 interface PatternFieldProps {
-  /** Read-only pattern array. PatternField cannot mutate this. */
   readonly pattern: Pattern;
-  /** Callback to emit new pattern. Only way PatternField can affect engine. */
   readonly onPatternChange: PatternChangeCallback;
-  /** Read-only depth. PatternField cannot change depth. */
   readonly depth: number;
-  /** Whether interaction is locked (during transitions). */
   readonly locked?: boolean;
-  /** Read-only mutation count for visual feedback. */
   readonly mutationCount?: number;
+  readonly entropy?: number;
+  readonly showBranchPulse?: boolean;
 }
 
 type NodeState = {
-  index: number;
+  patternIndex: number; // Stable: always maps to same pattern index
+  nodeId: string; // Stable: deterministic identity
   x: number;
   y: number;
   luminosity: number;
   distortion: number;
   pulsePhase: number;
+  glyph: string;
+  memoryWeight: number;
 };
 
-export const PatternField = ({ pattern, onPatternChange, depth, locked = false, mutationCount = 0 }: PatternFieldProps) => {
-  // REGRESSION GUARD: Validate inputs at component boundary
+const GLYPHS = ['◉', '●', '⬡'];
+
+export const PatternField = ({ 
+  pattern, 
+  onPatternChange, 
+  depth, 
+  locked = false, 
+  mutationCount = 0,
+  entropy = 0,
+  showBranchPulse = false,
+}: PatternFieldProps) => {
   validatePattern(pattern);
   validateDepth(depth);
   if (mutationCount !== undefined) {
@@ -93,21 +64,19 @@ export const PatternField = ({ pattern, onPatternChange, depth, locked = false, 
   }
 
   const historyNodes = useLiveQuery(() => db.nodes.toArray()) ?? [];
-  const [selected, setSelected] = useState<number[]>([]);
-  const [resonancePulse, setResonancePulse] = useState(0);
-  
-  // REGRESSION GUARANTEE: PatternField only reads from DB, never writes
-  // All memory writes happen in RecursiveEngine.handlePatternChange
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [branchPulseActive, setBranchPulseActive] = useState(false);
 
+  // Listen for branch pulse events
   useEffect(() => {
-    setSelected([]);
-  }, [pattern]);
-
-  useEffect(() => {
-    if (mutationCount > 0) {
-      setResonancePulse(mutationCount);
-    }
-  }, [mutationCount]);
+    if (typeof window === 'undefined') return;
+    const listener = () => {
+      setBranchPulseActive(true);
+      setTimeout(() => setBranchPulseActive(false), 150);
+    };
+    window.addEventListener('recursor-branch-pulse', listener);
+    return () => window.removeEventListener('recursor-branch-pulse', listener);
+  }, []);
 
   const nodeCount = useMemo(() => {
     const signature = computePatternSignature(pattern);
@@ -115,120 +84,232 @@ export const PatternField = ({ pattern, onPatternChange, depth, locked = false, 
   }, [pattern]);
 
   const nodes = useMemo(() => {
-    return deriveNodes(pattern, depth, historyNodes, nodeCount);
-  }, [pattern, depth, historyNodes, nodeCount]);
+    return deriveNodes(pattern, depth, historyNodes, nodeCount, entropy);
+  }, [pattern, depth, historyNodes, nodeCount, entropy]);
 
-  /**
-   * REGRESSION GUARANTEE: This is the ONLY way PatternField can affect the engine.
-   * - Computes new pattern deterministically
-   * - Emits via onPatternChange callback
-   * - NEVER mutates depth, sessionId, or memory
-   * - NEVER calls createMemoryNode, updateSession, or setDepth
-   */
-  const handleNodeSelect = (index: number) => {
-    if (locked) return;
-
-    const updated = selected.includes(index)
-      ? selected.filter(i => i !== index)
-      : [...selected, index];
-
-    setSelected(updated);
-
-    if (updated.length === CELLS_TO_SELECT) {
-      // REGRESSION GUARANTEE: Pattern mutation is pure computation
-      // No side effects, no memory writes, no depth changes
-      const updatedPattern = pattern.map((value, i) =>
-        updated.includes(i) ? (value + 1) % (MAX_CELL_STATE + 1) : value
-      );
-
-      // REGRESSION GUARANTEE: Only emit callback, never mutate engine state
-      onPatternChange(updatedPattern);
-      setSelected([]);
-      setResonancePulse(prev => prev + 1);
+  // Memory connections: thin lines between historically "hot" nodes
+  const memoryConnections = useMemo(() => {
+    if (historyNodes.length === 0) return [];
+    const connections: Array<{ from: string; to: string; weight: number }> = [];
+    const hotNodes = nodes.filter(n => n.memoryWeight > 0.3);
+    
+    for (let i = 0; i < hotNodes.length; i++) {
+      for (let j = i + 1; j < hotNodes.length; j++) {
+        const distance = Math.sqrt(
+          Math.pow(hotNodes[i].x - hotNodes[j].x, 2) + 
+          Math.pow(hotNodes[i].y - hotNodes[j].y, 2)
+        );
+        if (distance < 25) {
+          connections.push({
+            from: hotNodes[i].nodeId,
+            to: hotNodes[j].nodeId,
+            weight: (hotNodes[i].memoryWeight + hotNodes[j].memoryWeight) / 2,
+          });
+        }
+      }
     }
+    return connections;
+  }, [nodes, historyNodes]);
+
+  const handleNodeClick = (patternIndex: number) => {
+    if (locked) return;
+    
+    // Direct mutation: increment the pattern value at this pattern index
+    // patternIndex is stable and independent of nodeCount
+    const updatedPattern = pattern.map((value, i) =>
+      i === patternIndex ? (value + 1) % (MAX_CELL_STATE + 1) : value
+    );
+    
+    onPatternChange(updatedPattern);
   };
 
+  // Fallback: show dim nodes if pattern is empty
+  const hasData = pattern.length > 0 && nodes.length > 0;
+
   return (
-    <div className="relative mx-auto w-[min(90vw,420px)] aspect-square">
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        <defs>
-          <radialGradient id="field-depth" cx="50%" cy="50%" r="60%">
-            <stop
-              offset="0%"
-              stopColor={`hsla(${FIELD_DEPTH_HUE_BASE + depth * FIELD_DEPTH_HUE_PER_DEPTH}, 50%, 12%, 0.9)`}
+    <div className="absolute inset-0 w-full h-full">
+      {/* Background architecture morph (depth-based breathing) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <motion.div
+          className="absolute inset-0"
+          animate={{
+            opacity: [0.08, 0.18, 0.08],
+            scale: [1, 1.02, 1],
+          }}
+          transition={{
+            duration: 8 + depth * 0.5,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          style={{
+            background: `radial-gradient(
+              ellipse ${60 + depth * 5}% ${50 + depth * 3}% at ${50 + (depth % 3) * 2}% ${50 + (depth % 5) * 1}%,
+              hsla(${NODE_BASE_HUE + depth * NODE_HUE_PER_DEPTH}, 40%, 15%, 0.4) 0%,
+              hsla(${NODE_BASE_HUE + depth * NODE_HUE_PER_DEPTH + 30}, 30%, 8%, 0.2) 50%,
+              transparent 100%
+            )`,
+          }}
+        />
+        
+        {/* Branching chromatic pulse */}
+        <AnimatePresence>
+          {(branchPulseActive || showBranchPulse) && (
+            <motion.div
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.6, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                background: `radial-gradient(circle, 
+                  hsla(${NODE_BASE_HUE + depth * NODE_HUE_PER_DEPTH + 60}, 90%, 50%, 0.8) 0%,
+                  transparent 70%
+                )`,
+              }}
             />
-            <stop
-              offset="70%"
-              stopColor={`hsla(${FIELD_DEPTH_HUE_SECONDARY_BASE + depth * FIELD_DEPTH_HUE_SECONDARY_PER_DEPTH}, 35%, 4%, 0.4)`}
-            />
-            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-          </radialGradient>
-        </defs>
+          )}
+        </AnimatePresence>
+      </div>
 
-        <rect x="0" y="0" width="100" height="100" fill="url(#field-depth)" />
-
-        {nodes.map(node => {
-          const isSelected = selected.includes(node.index);
-          const baseLuminosity = node.luminosity;
-          const currentLuminosity = isSelected ? Math.min(1, baseLuminosity * 1.4) : baseLuminosity;
-          const glowRadius =
-            NODE_GLOW_BASE +
-            currentLuminosity * NODE_GLOW_LUMINOSITY_MULT +
-            node.distortion * NODE_GLOW_DISTORTION_MULT;
-          const opacity = NODE_OPACITY_BASE + currentLuminosity * NODE_OPACITY_LUMINOSITY_MULT;
-          const hue = NODE_BASE_HUE + depth * NODE_HUE_PER_DEPTH + node.distortion * NODE_HUE_PER_DISTORTION;
-
+      {/* Main field */}
+      <svg 
+        viewBox="0 0 100 100" 
+        className="absolute inset-0 w-full h-full"
+        style={{ mixBlendMode: 'screen' }}
+      >
+        {/* Memory lattice layer (persistent, cumulative) */}
+        <MemoryLattice
+          pattern={pattern}
+          depth={depth}
+          mutationCount={mutationCount}
+        />
+        {/* Memory constellation lines */}
+        {memoryConnections.map((conn, idx) => {
+          const fromNode = nodes.find(n => n.nodeId === conn.from);
+          const toNode = nodes.find(n => n.nodeId === conn.to);
+          if (!fromNode || !toNode) return null;
+          
           return (
-            <g key={`node-${node.index}`}>
-              <motion.circle
-                cx={node.x}
-                cy={node.y}
-                r={glowRadius}
-                fill={`hsla(${hue}, ${NODE_SATURATION}%, ${NODE_LIGHTNESS_BASE + currentLuminosity * NODE_LIGHTNESS_LUMINOSITY_MULT}%, ${opacity})`}
-                onClick={() => handleNodeSelect(node.index)}
-                style={{ cursor: locked ? 'default' : 'pointer' }}
-                animate={{
-                  opacity: [
-                    0.2 + currentLuminosity * 0.4,
-                    0.35 + currentLuminosity * 0.7,
-                    0.2 + currentLuminosity * 0.4,
-                  ],
-                  scale: [
-                    1 - node.distortion * 0.15,
-                    1 + node.distortion * 0.2 + (isSelected ? 0.3 : 0),
-                    1 - node.distortion * 0.15,
-                  ],
-                }}
-                transition={{
-                  duration: 3.5 - node.pulsePhase * 0.8,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                  delay: node.pulsePhase * 0.4,
-                }}
-              />
-            </g>
+            <line
+              key={`conn-${idx}`}
+              x1={fromNode.x}
+              y1={fromNode.y}
+              x2={toNode.x}
+              y2={toNode.y}
+              stroke={`hsla(${NODE_BASE_HUE + depth * NODE_HUE_PER_DEPTH}, 60%, 60%, ${0.15 * conn.weight})`}
+              strokeWidth={0.3}
+              opacity={0.2 + conn.weight * 0.3}
+            />
           );
         })}
 
-        {resonancePulse > 0 && (
-          <motion.circle
-            key={`pulse-${resonancePulse}`}
-            cx="50"
-            cy="50"
-            r="0"
-            fill="none"
-            stroke={`hsla(${PULSE_HUE_BASE + depth * PULSE_HUE_PER_DEPTH}, ${PULSE_SATURATION}%, ${PULSE_LIGHTNESS}%, ${PULSE_OPACITY})`}
-            strokeWidth={0.8}
-            initial={{ r: 0, opacity: 0.6 }}
-            animate={{
-              r: PULSE_MAX_RADIUS,
-              opacity: [0.6, 0.2, 0],
-            }}
-            transition={{
-              duration: PULSE_DURATION / 1000,
-              ease: 'easeOut',
-            }}
-          />
+        {/* Floating nodes */}
+        {hasData ? (
+          nodes.map((node) => {
+            const isHovered = hoveredNode === node.nodeId;
+            const baseLuminosity = node.luminosity;
+            const currentLuminosity = isHovered 
+              ? Math.min(1, baseLuminosity * 1.6) 
+              : baseLuminosity;
+            
+            // Entropy-based jitter
+            const jitterX = entropy * (node.pulsePhase - 0.5) * 0.8;
+            const jitterY = entropy * ((node.pulsePhase + 0.3) % 1 - 0.5) * 0.8;
+            
+            const hue = NODE_BASE_HUE + depth * NODE_HUE_PER_DEPTH + node.distortion * 30;
+            const opacity = 0.3 + currentLuminosity * 0.7;
+            const size = 2.5 + currentLuminosity * 3 + node.memoryWeight * 2;
+
+        return (
+              <g key={node.nodeId}>
+                {/* Memory scar (brightness/shape distortion) */}
+                {node.memoryWeight > 0.2 && (
+                  <motion.circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={size * 1.8}
+                    fill="none"
+                    stroke={`hsla(${hue}, ${NODE_SATURATION}%, 70%, ${0.2 * node.memoryWeight})`}
+                    strokeWidth={0.4}
+                    animate={{
+                      opacity: [0.1, 0.3 * node.memoryWeight, 0.1],
+                      scale: [1, 1.2, 1],
+                    }}
+                    transition={{
+                      duration: 4 + node.pulsePhase * 2,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                )}
+
+                {/* Node glyph */}
+                <motion.text
+                  x={node.x + jitterX}
+                  y={node.y + jitterY}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={size}
+                  fill={`hsla(${hue}, ${NODE_SATURATION}%, ${45 + currentLuminosity * 35}%, ${opacity})`}
+                  onClick={() => handleNodeClick(node.patternIndex)}
+                  onMouseEnter={() => setHoveredNode(node.nodeId)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                  style={{ 
+                    cursor: locked ? 'default' : 'pointer',
+                    filter: isHovered ? 'drop-shadow(0 0 4px currentColor)' : 'none',
+                  }}
+                  animate={{
+                    opacity: [
+                      0.3 + currentLuminosity * 0.5,
+                      0.5 + currentLuminosity * 0.8,
+                      0.3 + currentLuminosity * 0.5,
+                    ],
+                    scale: isHovered 
+                      ? [1, 1.4, 1]
+                      : [
+                          1 - node.distortion * 0.1,
+                          1 + node.distortion * 0.15,
+                          1 - node.distortion * 0.1,
+                        ],
+                    x: isHovered 
+                      ? [node.x + jitterX, node.x + jitterX + 1, node.x + jitterX]
+                      : node.x + jitterX,
+                    y: isHovered 
+                      ? [node.y + jitterY, node.y + jitterY - 1, node.y + jitterY]
+                      : node.y + jitterY,
+                  }}
+                  transition={{
+                    duration: 3 + node.pulsePhase * 1.5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                    delay: node.pulsePhase * 0.5,
+                  }}
+                >
+                  {node.glyph}
+                </motion.text>
+              </g>
+            );
+          })
+        ) : (
+          // Fallback: dim idle nodes
+          Array.from({ length: 15 }).map((_, idx) => {
+            const angle = (idx / 15) * Math.PI * 2;
+            const radius = 30 + (idx % 3) * 5;
+            return (
+              <text
+                key={`fallback-${idx}`}
+                x={50 + Math.cos(angle) * radius}
+                y={50 + Math.sin(angle) * radius}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={2}
+                fill={`hsla(${NODE_BASE_HUE}, 30%, 30%, 0.2)`}
+                opacity={0.15}
+              >
+                ●
+              </text>
+            );
+          })
         )}
       </svg>
     </div>
@@ -236,64 +317,91 @@ export const PatternField = ({ pattern, onPatternChange, depth, locked = false, 
 };
 
 /**
- * Deterministic node derivation function.
- * Pure function: f(pattern, depth, historyNodes, nodeCount) → NodeState[]
- * No randomness. All outputs are deterministic hashes of inputs.
+ * Deterministic node derivation with stable identity.
+ * Pure function: f(pattern, depth, historyNodes, nodeCount, entropy) → NodeState[]
+ * 
+ * CRITICAL: Nodes are generated per pattern index, ensuring stable identity
+ * independent of nodeCount fluctuations. Each pattern index gets a stable
+ * set of nodes that persist across recomputations.
  */
-function deriveNodes(pattern: Pattern, depth: number, historyNodes: any[], nodeCount: number): NodeState[] {
+function deriveNodes(
+  pattern: Pattern,
+  depth: number,
+  historyNodes: any[],
+  nodeCount: number,
+  entropy: number
+): NodeState[] {
   if (pattern.length === 0) return [];
 
   const historyVector = deriveHistoryVector(historyNodes, pattern.length);
   const distortionMap = deriveDistortionMap(historyNodes, pattern.length, depth);
-
-  const depthPhase = depth * 0.12; // Deterministic phase shift per depth
-  const baseRadius = NODE_BASE_RADIUS + depth * NODE_RADIUS_PER_DEPTH;
   const signature = computePatternSignature(pattern);
 
-  return Array.from({ length: nodeCount }, (_, nodeIndex) => {
-    const patternIndex = Math.floor((nodeIndex / nodeCount) * pattern.length);
-    const value = pattern[patternIndex] ?? 0;
+  const nodes: NodeState[] = [];
+
+  // Generate nodes per pattern index (stable mapping)
+  // Each pattern index gets multiple nodes distributed deterministically
+  for (let patternIndex = 0; patternIndex < pattern.length; patternIndex++) {
+    const value = pattern[patternIndex];
     const intensity = value / MAX_CELL_STATE;
     const memory = historyVector[patternIndex] ?? 0;
     const distortion = distortionMap[patternIndex] ?? 0;
 
-    const normalized = (nodeIndex + 0.5) / nodeCount;
-    const angle = normalized * Math.PI * 2 + depthPhase + (memory - 0.5) * 1.2 + distortion * 0.8;
-    const radiusVariation = memory * 18 + distortion * 22 + (signature % 13) * 0.3;
-    const radius = clamp(baseRadius + radiusVariation, NODE_MIN_RADIUS, NODE_MAX_RADIUS);
-    const ellipse = 0.75 + memory * 0.2;
+    // Calculate how many nodes this pattern index should have
+    // Distribute nodeCount across pattern indices deterministically
+    const nodesPerIndex = Math.floor(nodeCount / pattern.length);
+    const extraNodes = nodeCount % pattern.length;
+    const nodeCountForIndex = nodesPerIndex + (patternIndex < extraNodes ? 1 : 0);
 
-    const x = clamp(50 + Math.cos(angle) * radius, FIELD_BOUNDS.min, FIELD_BOUNDS.max);
-    const y = clamp(50 + Math.sin(angle) * radius * ellipse, FIELD_BOUNDS.min, FIELD_BOUNDS.max);
+    // Generate nodes for this pattern index
+    for (let localIndex = 0; localIndex < nodeCountForIndex; localIndex++) {
+      // Stable node ID: pattern index + local index + signature
+      // This ensures same node always has same ID regardless of nodeCount
+      const nodeId = `node-${patternIndex}-${localIndex}-${signature}`;
+      
+      // Deterministic positioning based on pattern index (stable)
+      const seed1 = (signature + patternIndex * 17 + localIndex * 7) % 97;
+      const seed2 = (signature + patternIndex * 23 + localIndex * 11) % 89;
+      const seed3 = (signature + patternIndex * 31 + localIndex * 13) % 83;
+      
+      // Use seeds to create non-aligned, non-centered distribution
+      const baseX = FIELD_BOUNDS.min + (seed1 / 97) * (FIELD_BOUNDS.max - FIELD_BOUNDS.min);
+      const baseY = FIELD_BOUNDS.min + (seed2 / 89) * (FIELD_BOUNDS.max - FIELD_BOUNDS.min);
+      
+      // Add depth-based phase and memory-based offset
+      const phase = (depth * 0.15 + patternIndex * 0.1 + localIndex * 0.05) % 1;
+      const memoryOffset = memory * 8;
+      const finalX = clamp(baseX + Math.cos(phase * Math.PI * 2) * memoryOffset, FIELD_BOUNDS.min, FIELD_BOUNDS.max);
+      const finalY = clamp(baseY + Math.sin(phase * Math.PI * 2) * memoryOffset, FIELD_BOUNDS.min, FIELD_BOUNDS.max);
 
-    const luminosity = clamp(intensity * 0.6 + memory * 0.4, 0, 1);
-    const pulsePhase = ((nodeIndex + signature) % 5) / 5;
+      const luminosity = clamp(intensity * 0.5 + memory * 0.5, 0, 1);
+      const pulsePhase = ((patternIndex * 7 + localIndex + signature) % 7) / 7;
+      
+      // Deterministic glyph selection (stable per pattern index)
+      const glyphIndex = (signature + patternIndex + localIndex) % GLYPHS.length;
+      const glyph = GLYPHS[glyphIndex];
 
-    return {
-      index: patternIndex,
-      x,
-      y,
-      luminosity,
-      distortion,
-      pulsePhase,
-    };
-  });
+      nodes.push({
+        patternIndex, // Stable: always maps to same pattern index
+        nodeId, // Stable: deterministic identity
+        x: finalX,
+        y: finalY,
+        luminosity,
+        distortion,
+        pulsePhase,
+        glyph,
+        memoryWeight: memory,
+      });
+    }
+  }
+
+  return nodes;
 }
 
-/**
- * Deterministic pattern signature hash.
- * Pure function: f(pattern) → number
- * Used for node count and pulse phase calculations.
- */
 function computePatternSignature(pattern: Pattern): number {
   return pattern.reduce((sum, val, idx) => sum + (val + 1) * (idx + 1), 0);
 }
 
-/**
- * Derives history vector from memory nodes.
- * Pure function: f(nodes, length) → number[]
- * Computes average pattern values per index, weighted by depth.
- */
 function deriveHistoryVector(nodes: any[], length: number): number[] {
   if (length === 0 || nodes.length === 0) {
     return new Array(length).fill(0);
@@ -305,7 +413,6 @@ function deriveHistoryVector(nodes: any[], length: number): number[] {
   nodes.forEach(node => {
     if (!node.pattern || node.pattern.length === 0) return;
     const sourceLength = node.pattern.length;
-
     for (let i = 0; i < length; i++) {
       const sourceIndex = Math.min(sourceLength - 1, Math.floor((i / length) * sourceLength));
       vector[i] += node.pattern[sourceIndex];
@@ -319,11 +426,6 @@ function deriveHistoryVector(nodes: any[], length: number): number[] {
   });
 }
 
-/**
- * Derives distortion map from memory nodes.
- * Pure function: f(nodes, length, depth) → number[]
- * Computes weighted pattern accumulation, normalized to [0, 1].
- */
 function deriveDistortionMap(nodes: any[], length: number, depth: number): number[] {
   if (length === 0 || nodes.length === 0) {
     return new Array(length).fill(0);
