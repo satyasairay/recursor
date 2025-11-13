@@ -21,6 +21,10 @@ import { useCrypticMessages } from '@/hooks/useCrypticMessages';
  * 
  * Owns ALL logic: mutation, depth progression, memory writes, session tracking.
  * PatternField is pure presentation layer that receives (pattern, depth, memory, mutationCount).
+ * 
+ * ROUTE-SCOPED: This component ONLY renders on the Index route ("/"). PatternField
+ * is contained within this component and will NOT render on Memory, Signature, or other routes.
+ * Icon overlays (∞, ◌, ☍) appear on top of PatternField but do not navigate away.
  */
 export const RecursiveEngine = () => {
   const [depth, setDepth] = useState(0);

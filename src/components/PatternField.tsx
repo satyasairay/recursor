@@ -5,6 +5,10 @@
  * and renders a living field of floating nodes that respond to state.
  * 
  * No grids, no labels, no UI. Only life, presence, and memory.
+ * 
+ * ROUTE-SCOPED: This component ONLY renders on the main recursion screen (Index route).
+ * It is NOT rendered on Memory, Signature, or other routes. PatternField is contained
+ * within RecursiveEngine, which is only mounted in Index.tsx.
  */
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
@@ -355,9 +359,9 @@ function deriveNodes(
 
     // Generate nodes for this pattern index
     for (let localIndex = 0; localIndex < nodeCountForIndex; localIndex++) {
-      // Stable node ID: pattern index + local index + signature
-      // This ensures same node always has same ID regardless of nodeCount
-      const nodeId = `node-${patternIndex}-${localIndex}-${signature}`;
+      // Stable node ID: pattern index + local index (signature removed to prevent remounting)
+      // This ensures same node always has same ID regardless of pattern mutations
+      const nodeId = `node-${patternIndex}-${localIndex}`;
       
       // Deterministic positioning based on pattern index (stable)
       const seed1 = (signature + patternIndex * 17 + localIndex * 7) % 97;
