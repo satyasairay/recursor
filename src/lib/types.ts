@@ -10,8 +10,8 @@
 // ============================================================================
 
 /**
- * PATTERN: A linear sequence of cells representing the current puzzle state.
- * Patterns evolve through user interaction and historical analysis.
+ * PATTERN: A linear sequence of cells representing the present state of the recursion field.
+ * Patterns evolve through interaction and remembered history.
  * Patterns are always flat arrays for consistency and predictability.
  */
 export type Pattern = number[];
@@ -21,10 +21,10 @@ export type Pattern = number[];
  * Each cell has a state (0-3) representing its evolution level.
  * 
  * Cell States:
- * 0 = Empty/dormant
- * 1 = Awakening
- * 2 = Active
- * 3 = Complete/mature
+ * 0 = Dormant
+ * 1 = Stirring
+ * 2 = Resonant
+ * 3 = Complete
  */
 export interface Cell {
   index: number;
@@ -157,7 +157,7 @@ export interface Achievement {
   code: AchievementCode;
   timestamp: number;
   sessionId: number;
-  metadata: AchievementMetadata;
+  sigil: SigilCode;
   revealed: boolean; // Whether user has seen it in constellation
 }
 
@@ -173,12 +173,17 @@ export type AchievementCode =
   | 'rapid_descent'      // Reached depth 5 in under 2 minutes
   | 'pattern_monk'       // 100+ pattern mutations in one session;
 
-export interface AchievementMetadata {
-  depth?: number;
-  value?: number;
-  pattern?: Pattern;
-  description?: string;
-}
+export type SigilCode =
+  | '⟲'
+  | '✶'
+  | '⇂'
+  | '≋'
+  | '⬡'
+  | '◎'
+  | '✳'
+  | '☌'
+  | '⟱'
+  | '卍';
 
 // ============================================================================
 // STATISTICS & ANALYTICS

@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, applyWeightDecay } from '@/lib/recursionDB';
 import { useState } from 'react';
 import { MemoryNode } from '@/lib/types';
-import { getAchievementInfo, revealAchievement } from '@/lib/achievementEngine';
+import { revealAchievement } from '@/lib/achievementEngine';
 
 /**
  * Constellation visualization of user's memory graph.
@@ -233,23 +233,19 @@ export const MemoryConstellation = () => {
             
             {/* Reveal achievements */}
             {achievements && getNodeAchievements(nodes[hoveredNode]).length > 0 && (
-              <div className="border-t border-primary/20 pt-2 mt-2 space-y-1">
-                <div className="text-primary/70 text-[10px] uppercase tracking-wider">
-                  Insights
-                </div>
-                {getNodeAchievements(nodes[hoveredNode]).map(achievement => {
-                  const info = getAchievementInfo(achievement.code);
-                  return (
-                    <motion.div
+              <div className="border-t border-primary/20 pt-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 justify-start">
+                  {getNodeAchievements(nodes[hoveredNode]).map(achievement => (
+                    <motion.span
                       key={achievement.id}
-                      className="text-[10px] italic text-muted-foreground"
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      className="text-lg text-primary/80 tracking-widest"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
                     >
-                      "{info?.crypticHint || 'Unknown pattern'}"
-                    </motion.div>
-                  );
-                })}
+                      {achievement.sigil}
+                    </motion.span>
+                  ))}
+                </div>
               </div>
             )}
           </div>

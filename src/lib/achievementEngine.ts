@@ -5,16 +5,20 @@
  * No pop-ups, no explicit notifications - only subtle reveals in constellation.
  */
 
-import { Pattern, Achievement, AchievementCode } from './types';
+import { Achievement, AchievementCode, SigilCode } from './types';
 import { db } from './recursionDB';
 
 /**
  * Achievement definitions with detection logic.
  */
-const ACHIEVEMENT_DEFINITIONS = {
+type AchievementDefinition = {
+  sigil: SigilCode;
+  check: (sessionId: number) => Promise<boolean>;
+};
+
+const ACHIEVEMENT_DEFINITIONS: Record<AchievementCode, AchievementDefinition> = {
   looped_path: {
-    name: 'Looped Path',
-    crypticHint: 'The circle completes itself',
+    sigil: '⟲',
     check: async (sessionId: number): Promise<boolean> => {
       const nodes = await db.nodes.where('sessionId').equals(sessionId).toArray();
       if (nodes.length < 3) return false;
@@ -32,8 +36,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   the_scatterer: {
-    name: 'The Scatterer',
-    crypticHint: 'Chaos recognizes chaos',
+    sigil: '✶',
     check: async (sessionId: number): Promise<boolean> => {
       const session = await db.sessions.get(sessionId);
       if (!session) return false;
@@ -51,8 +54,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   the_diver: {
-    name: 'The Diver',
-    crypticHint: 'Some descend further than others',
+    sigil: '⇂',
     check: async (sessionId: number): Promise<boolean> => {
       const session = await db.sessions.get(sessionId);
       return session ? session.depth >= 10 : false;
@@ -60,8 +62,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   echo_state: {
-    name: 'Echo State',
-    crypticHint: 'Memory stutters',
+    sigil: '≋',
     check: async (sessionId: number): Promise<boolean> => {
       const nodes = await db.nodes.where('sessionId').equals(sessionId).toArray();
       if (nodes.length < 2) return false;
@@ -78,8 +79,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   perfect_symmetry: {
-    name: 'Perfect Symmetry',
-    crypticHint: 'The mirror shows truth',
+    sigil: '⬡',
     check: async (sessionId: number): Promise<boolean> => {
       const nodes = await db.nodes.where('sessionId').equals(sessionId).toArray();
       
@@ -103,8 +103,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   void_gazer: {
-    name: 'Void Gazer',
-    crypticHint: 'Stillness before the plunge',
+    sigil: '◎',
     check: async (sessionId: number): Promise<boolean> => {
       const session = await db.sessions.get(sessionId);
       if (!session) return false;
@@ -118,8 +117,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   connection_weaver: {
-    name: 'Connection Weaver',
-    crypticHint: 'The web grows dense',
+    sigil: '✳',
     check: async (sessionId: number): Promise<boolean> => {
       const nodes = await db.nodes.where('sessionId').equals(sessionId).toArray();
       const totalConnections = nodes.reduce((sum, n) => sum + n.connections.length, 0);
@@ -129,8 +127,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   decay_master: {
-    name: 'Decay Master',
-    crypticHint: 'All things fade',
+    sigil: '☌',
     check: async (): Promise<boolean> => {
       const nodes = await db.nodes.toArray();
       if (nodes.length < 5) return false;
@@ -142,8 +139,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   rapid_descent: {
-    name: 'Rapid Descent',
-    crypticHint: 'Velocity into the void',
+    sigil: '⟱',
     check: async (sessionId: number): Promise<boolean> => {
       const session = await db.sessions.get(sessionId);
       if (!session || session.depth < 5) return false;
@@ -156,8 +152,7 @@ const ACHIEVEMENT_DEFINITIONS = {
   },
   
   pattern_monk: {
-    name: 'Pattern Monk',
-    crypticHint: 'Repetition reveals pattern',
+    sigil: '卍',
     check: async (sessionId: number): Promise<boolean> => {
       const session = await db.sessions.get(sessionId);
       return session ? session.metadata.interactionCount >= 100 : false;
@@ -191,9 +186,7 @@ export const checkAchievements = async (sessionId: number): Promise<AchievementC
           code: code as AchievementCode,
           timestamp: Date.now(),
           sessionId,
-          metadata: {
-            description: definition.crypticHint,
-          },
+          sigil: definition.sigil,
           revealed: false,
         };
         

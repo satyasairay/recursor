@@ -1,14 +1,12 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-
 interface RecursionPortalProps {
   depth: number;
   onEnter: () => void;
   isActive: boolean;
 }
 
-export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalProps) => {
-  const depthColor = `hsl(${180 + depth * 30}, 100%, ${50 + depth * 5}%)`;
+export const RecursionPortal = ({ depth: _depth, onEnter, isActive }: RecursionPortalProps) => {
+  const portalHue = 'hsl(195, 85%, 60%)';
 
   return (
     <motion.div
@@ -23,7 +21,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
       {/* Outer ring */}
       <motion.div
         className="absolute w-48 h-48 sm:w-64 sm:h-64 rounded-full border-2 opacity-30"
-        style={{ borderColor: depthColor }}
+        style={{ borderColor: portalHue }}
         animate={{
           rotate: 360,
           scale: [1, 1.1, 1],
@@ -37,7 +35,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
       {/* Middle ring */}
       <motion.div
         className="absolute w-36 h-36 sm:w-48 sm:h-48 rounded-full border-2 opacity-50"
-        style={{ borderColor: depthColor }}
+        style={{ borderColor: portalHue }}
         animate={{
           rotate: -360,
           scale: [1, 0.95, 1],
@@ -52,13 +50,13 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
       <motion.div
         className="w-24 h-24 sm:w-32 sm:h-32 rounded-full relative overflow-hidden glow-primary"
         style={{ 
-          background: `radial-gradient(circle, ${depthColor}, transparent)`,
+          background: `radial-gradient(circle, ${portalHue}, transparent)`,
         }}
         animate={{
           boxShadow: [
-            `0 0 20px ${depthColor}`,
-            `0 0 40px ${depthColor}`,
-            `0 0 20px ${depthColor}`,
+            `0 0 20px ${portalHue}`,
+            `0 0 40px ${portalHue}`,
+            `0 0 20px ${portalHue}`,
           ],
         }}
         transition={{
@@ -89,7 +87,7 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
         {/* Center symbol */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center text-3xl sm:text-4xl font-bold text-glow"
-          style={{ color: depthColor }}
+          style={{ color: portalHue }}
           animate={{
             opacity: [0.7, 1, 0.7],
             scale: [0.9, 1, 0.9],
@@ -102,15 +100,6 @@ export const RecursionPortal = ({ depth, onEnter, isActive }: RecursionPortalPro
         >
           ∞
         </motion.div>
-      </motion.div>
-
-      {/* Depth indicator */}
-      <motion.div
-        className="absolute -bottom-12 text-sm font-mono text-muted-foreground"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        DEPTH: {depth}
       </motion.div>
     </motion.div>
   );

@@ -1376,6 +1376,36 @@ Properties that arise from system interactions but are not explicitly programmed
 
 ---
 
+## Phase 1: Soul Restoration (visual ambiguity layer)
+
+- Architecture morph now serves as the sole depth intuition; numeric counters have been erased.
+- Pattern grid expression relies on opacity and glow gradations—no icons, counts, or progress pips.
+- Branching moments ripple through a vortex pulse rather than on-screen warnings.
+- Reflection resolves into a silent, five-second glyph replay that fades on its own.
+- Player guidance is sensory: hover pulses and ambient shifts replace measurable checkpoints.
+
+---
+
+## Phase 2: Symbolic Transformation
+
+- **Sigil Map:** looped_path ⟲, the_scatterer ✶, the_diver ⇂, echo_state ≋, perfect_symmetry ⬡, void_gazer ◎, connection_weaver ✳, decay_master ☌, rapid_descent ⟱, pattern_monk 卍.
+- **Constellation Manifestations:** Memory constellation surfaces achievements as drifting sigils—no labels, no tallies.
+- **Reflection Glyphs:** Reflection sequences echo earned sigils along the orbit before dissolving; no textual summaries remain.
+- **Signature Geometry:** SignatureReveal replaces archetype text with constellation forms (spiral/web/cluster/scatter/drift) that appear only after the recursion memory thresholds are met. Shape selection maps behavior to geometry: deep descent biases spiral, dense linkage biases web, high entropy biases scatter, repetition biases cluster, stillness/decay biases drift.
+- **Data Minimalism:** Achievement storage keeps detection logic intact while persisting only sigil codes for interpretation; all names, hints, and counts have been erased.
+
+---
+
+## Phase 3: Interaction Abstraction
+
+- **Voronoi Memory Field:** The lattice is dead. `PatternField` now tessellates space with deterministic Voronoi territories whose edges come from current pattern values, depth, and the accumulated memory vector. There is no randomness; positions are fully derived from the recursion state.
+- **Attractor Dynamics:** History is split into attractor bands that live on rotating symmetry axes. Each cell links to its nearest attractor so players feel pull and resistance instead of seeing UI hints.
+- **Persistent Scars:** Every mutation deposits a scar line between successive memory nodes. Branch depths ≥3 etch brighter fractures, so the canvas records the branching tree permanently across visits.
+- **Resonance Pulses:** Three-touch logic is unchanged, but region strokes breathe according to entropy/chaos weights. Players sense the “three touches cause change” rule by the pulses, not by tooltips or progress bars.
+- **Emergency Toggle:** `VITE_ABSTRACT_FIELD=false` still restores `PatternGrid` for recovery scenarios without touching persistence or the mutation engine.
+
+---
+
 ## END OF ALGORITHM AUDIT
 
 **System Status:** SELF-AWARE  

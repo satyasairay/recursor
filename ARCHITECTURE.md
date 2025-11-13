@@ -8,12 +8,11 @@ This document defines the core architecture, data structures, and vocabulary tha
 
 ## 📐 Core Vocabulary
 
-### Pattern
-A **Pattern** is a linear sequence of cells representing the current puzzle state.
+A **Pattern** is a vector of cells representing the living state of the recursion field.
 - Type: `number[]` (array of integers)
 - Each value represents a cell's evolution state (0-3)
 - Patterns evolve through user interaction and historical analysis
-- Patterns are always flat arrays for consistency and predictability
+- Rendering is non-orthogonal: patterns manifest as deterministic Voronoi fields steered by memory + depth (`PatternField` by default, `PatternGrid` is emergency fallback via `VITE_ABSTRACT_FIELD=false`)
 
 **Example:**
 ```typescript
@@ -23,11 +22,11 @@ const pattern: Pattern = [0, 1, 2, 1, 0, 1, 2, 3, 0];
 ### Cell
 A **Cell** is a single interactive unit within a pattern.
 - Each cell has a state (0-3) representing its evolution level
-- States:
-  - `0` = Empty/dormant
-  - `1` = Awakening  
-  - `2` = Active
-  - `3` = Complete/mature (triggers portal when all cells reach this)
+- States flow through:
+  - `0` = dormant
+  - `1` = stirring  
+  - `2` = resonant
+  - `3` = complete (triggers portal when all cells reach this)
 
 **Visual representation:**
 - State 0: `○` (empty circle)
@@ -126,7 +125,8 @@ IndexedDB persistence layer.
 src/
 ├── components/
 │   ├── RecursiveEngine.tsx      # Main orchestrator
-│   ├── PatternGrid.tsx          # Interactive cell grid
+│   ├── PatternField.tsx         # Behavioral interaction field (history-weighted Voronoi, attractors, scars)
+│   ├── PatternGrid.tsx          # Legacy lattice (feature-flag fallback)
 │   ├── RecursionPortal.tsx      # Portal entry animation
 │   └── MemoryConstellation.tsx  # Session visualization
 ├── pages/
@@ -210,6 +210,13 @@ const hue = BASE_HUE + depth * HUE_SHIFT_PER_DEPTH;
 // Depth 3: magenta (270°)
 // etc.
 ```
+
+### Pattern Field Behavior
+- Each cell projects a Voronoi territory; territory edges are computed deterministically from the current pattern, historical memory vector, and depth.
+- History-derived attractor nodes pull territories toward latent symmetry axes; attractor weight comes from long-term interaction averages.
+- Every mutation deposits a "scar" (line segment) that persists via the IndexedDB node graph, visibly documenting branching decisions.
+- Resonance pulses run along cluster boundaries instead of progress meters; entropy/chaos values modulate pulse cadence.
+- No randomness, blur, or particle scatter: all geometry is derived from recursion state so the artifact drifts only when the user mutates it.
 
 ### Animation Timings
 - Portal transition: 1000ms

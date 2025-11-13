@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Pattern } from '@/lib/types';
-import { CELLS_TO_SELECT, MAX_CELL_STATE, BASE_HUE, HUE_SHIFT_PER_DEPTH, CELL_REVEAL_DELAY } from '@/lib/constants';
+import { CELLS_TO_SELECT, MAX_CELL_STATE, CELL_REVEAL_DELAY } from '@/lib/constants';
 import { DecayParticles } from './DecayParticles';
 
 interface PatternGridProps {
@@ -11,7 +11,7 @@ interface PatternGridProps {
   locked?: boolean;
 }
 
-export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }: PatternGridProps) => {
+export const PatternGrid = ({ pattern, onPatternChange, depth: _depth, locked = false }: PatternGridProps) => {
   const [selectedCells, setSelectedCells] = useState<number[]>([]);
   const [isRevealing, setIsRevealing] = useState(true);
   const [decayTriggers, setDecayTriggers] = useState<Record<number, number>>({});
@@ -50,20 +50,18 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
     }
   };
 
-  const getCellColor = (value: number, index: number) => {
-    const isSelected = selectedCells.includes(index);
-    const baseHue = BASE_HUE + depth * HUE_SHIFT_PER_DEPTH;
-    
-    // Dark cosmic palette: deep blues, violets, cyans
-    // Saturation decreases with value for mystery
-    const saturation = 70 - (value * 8);
-    const lightness = 15 + (value * 8); // Much darker range (15-40%)
-    
-    if (isSelected) {
-      // Selected cells glow with cyan accent
-      return `hsl(${baseHue + 60}, 85%, 45%)`;
-    }
-    return `hsl(${baseHue}, ${saturation}%, ${lightness}%)`;
+  const getCellIntensity = (value: number) => value / MAX_CELL_STATE;
+
+  const getCellTone = (value: number, isSelected: boolean) => {
+    const intensity = getCellIntensity(value);
+    const baseLight = 10 + intensity * 35;
+    const glowAlpha = 0.15 + intensity * 0.4;
+
+    return {
+      background: `hsla(220, 60%, ${baseLight}%, ${isSelected ? 0.9 : 0.75})`,
+      glow: `0 0 ${18 + intensity * 24}px hsla(210, 80%, 70%, ${glowAlpha})`,
+      overlay: `radial-gradient(circle, hsla(210, 85%, 80%, ${glowAlpha}) 0%, transparent 65%)`,
+    };
   };
 
   const gridSize = Math.ceil(Math.sqrt(pattern.length));
@@ -76,7 +74,7 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
           key={`${index}-${trigger}`}
           cellIndex={parseInt(index)}
           gridSize={gridSize}
-          color={getCellColor(pattern[parseInt(index)], parseInt(index))}
+          color="hsla(210, 100%, 75%, 0.6)"
           trigger={trigger}
         />
       ))}
@@ -88,95 +86,55 @@ export const PatternGrid = ({ pattern, onPatternChange, depth, locked = false }:
           gridTemplateColumns: `repeat(${gridSize}, minmax(44px, 1fr))`,
         }}
       >
-        {pattern.map((value, index) => (
-          <motion.button
-            key={index}
-            className="aspect-square rounded-lg relative overflow-hidden cursor-pointer disabled:cursor-not-allowed touch-manipulation min-h-[44px]"
-            style={{
-              backgroundColor: getCellColor(value, index),
-            }}
-            onClick={() => handleCellClick(index)}
-            disabled={locked || isRevealing}
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ 
-              scale: isRevealing ? [0.8, 1.05, 1] : 1,
-              rotate: isRevealing ? [-180, 10, 0] : 0,
-            }}
-            transition={{
-              delay: index * (CELL_REVEAL_DELAY / 1000),
-              duration: 0.6,
-              ease: 'easeOut',
-            }}
-            whileHover={!locked && !isRevealing ? { 
-              scale: 1.15,
-              boxShadow: `0 0 40px ${getCellColor(value, index)}, 0 0 60px ${getCellColor(value, index)}`,
-            } : {}}
-            whileTap={!locked && !isRevealing ? { scale: 0.95 } : {}}
-          >
-            {/* Inner glow effect */}
-            <motion.div
-              className="absolute inset-0"
-              animate={{
-                opacity: selectedCells.includes(index) ? [0.3, 0.7, 0.3] : 0.2,
+        {pattern.map((value, index) => {
+          const isSelected = selectedCells.includes(index);
+          const tone = getCellTone(value, isSelected);
+
+          return (
+            <motion.button
+              key={index}
+              className="aspect-square rounded-lg relative overflow-hidden cursor-pointer disabled:cursor-not-allowed touch-manipulation min-h-[44px]"
+              style={{
+                backgroundColor: tone.background,
+                boxShadow: tone.glow,
+              }}
+              onClick={() => handleCellClick(index)}
+              disabled={locked || isRevealing}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ 
+                scale: isRevealing ? [0.8, 1.05, 1] : 1,
+                rotate: isRevealing ? [-180, 10, 0] : 0,
               }}
               transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: 'easeInOut',
+                delay: index * (CELL_REVEAL_DELAY / 1000),
+                duration: 0.6,
+                ease: 'easeOut',
               }}
-              style={{
-                background: `radial-gradient(circle, transparent, ${getCellColor(value, index)})`,
-              }}
-            />
-
-            {/* Value indicator */}
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center text-lg sm:text-xl md:text-2xl font-bold"
-              animate={{
-                opacity: value > 0 ? 1 : 0.3,
-              }}
+              whileHover={!locked && !isRevealing ? { 
+                scale: 1.12,
+                boxShadow: '0 0 40px hsla(210, 90%, 70%, 0.4)',
+              } : {}}
+              whileTap={!locked && !isRevealing ? { scale: 0.95 } : {}}
             >
-              {value > 0 ? '●'.repeat(value) : '○'}
-            </motion.div>
-
-            {/* Fractal corner markers for mature cells */}
-            {value >= MAX_CELL_STATE && (
-              <>
-                <div className="absolute top-0 left-0 w-2 h-2 border-l-2 border-t-2 border-background" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 border-r-2 border-b-2 border-background" />
-              </>
-            )}
-          </motion.button>
-        ))}
+              {/* Inner glow effect */}
+              <motion.div
+                className="absolute inset-0"
+                animate={{
+                  opacity: isSelected ? [0.25, 0.6, 0.25] : 0.18 + getCellIntensity(value) * 0.4,
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+                style={{
+                  background: tone.overlay,
+                }}
+              />
+            </motion.button>
+          );
+        })}
       </div>
-
-      {/* Selection progress - visual only, no text */}
-      {selectedCells.length > 0 && !locked && (
-        <motion.div
-          className="absolute -bottom-8 left-0 right-0 flex justify-center gap-2"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          {[...Array(CELLS_TO_SELECT)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="w-2 h-2 rounded-full"
-              style={{
-                backgroundColor: i < selectedCells.length ? 'hsl(180, 70%, 50%)' : 'hsl(220, 20%, 25%)',
-                boxShadow: i < selectedCells.length ? '0 0 10px hsl(180, 70%, 50%)' : 'none',
-              }}
-              animate={{
-                scale: i === selectedCells.length ? [1, 1.4, 1] : 1,
-                opacity: [0.6, 1, 0.6],
-              }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-              }}
-            />
-          ))}
-        </motion.div>
-      )}
     </div>
   );
 };

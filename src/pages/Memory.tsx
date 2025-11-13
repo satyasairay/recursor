@@ -1,16 +1,15 @@
 import { motion } from 'framer-motion';
 import { MemoryConstellation } from '@/components/MemoryConstellation';
 import { ArtifactExport } from '@/components/ArtifactExport';
-import { ArchetypeInsight } from '@/components/ArchetypeInsight';
+import { SignatureReveal } from '@/components/SignatureReveal';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
 import { getSessionStats, getNodeStats, db } from '@/lib/recursionDB';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { SessionStats } from '@/lib/types';
-import { getAchievementStats } from '@/lib/achievementEngine';
 import { GlitchEffect } from '@/components/GlitchEffect';
 import { DepthVortex } from '@/components/DepthVortex';
 import { ArchitectureMorph } from '@/components/ArchitectureMorph';
@@ -24,7 +23,6 @@ const Memory = () => {
   const achievements = useLiveQuery(() => db.achievements.toArray()) || [];
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [nodeStats, setNodeStats] = useState<any>(null);
-  const [achievementStats, setAchievementStats] = useState<any>(null);
   const narrative = useNarrativeState();
 
   useLiveQuery(async () => {
@@ -37,10 +35,12 @@ const Memory = () => {
     setNodeStats(data);
   });
 
-  useLiveQuery(async () => {
-    const data = await getAchievementStats();
-    setAchievementStats(data);
-  });
+  const achievementSigils = useMemo(() => {
+    const sigils = achievements.map((achievement) => {
+      return achievement.sigil || '◦';
+    });
+    return Array.from(new Set(sigils));
+  }, [achievements]);
 
   const handleExport = async () => {
     if (nodes.length === 0) return;
@@ -49,7 +49,6 @@ const Memory = () => {
       timestamp: Date.now(),
       stats,
       nodeStats,
-      achievementStats,
       sessions: sessions.map(s => ({
         depth: s.depth,
         timestamp: s.timestamp,
@@ -119,7 +118,7 @@ const Memory = () => {
         </div>
 
         {/* Stats Grid */}
-        {nodeStats && achievementStats && (
+        {nodeStats && (
           <motion.div
             className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8"
             initial={{ opacity: 0 }}
@@ -150,16 +149,33 @@ const Memory = () => {
               <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">AVG LINKS</div>
             </div>
 
-            <div className="recursive-border rounded-lg p-3 sm:p-4 bg-card/50 backdrop-blur-sm relative overflow-hidden">
-              <div className="text-xl sm:text-2xl font-bold text-primary">{achievementStats.unrevealed}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">HIDDEN INSIGHTS</div>
-              {achievementStats.unrevealed > 0 && (
-                <motion.div
-                  className="absolute inset-0 bg-purple-500/5"
-                  animate={{ opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              )}
+            <div className="recursive-border rounded-lg p-3 sm:p-4 bg-card/50 backdrop-blur-sm relative overflow-hidden flex items-center justify-center">
+              <motion.div
+                className="flex flex-wrap items-center justify-center gap-2 text-2xl text-primary/80"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
+              >
+                {achievementSigils.length > 0
+                  ? achievementSigils.map((sigil, index) => (
+                      <motion.span
+                        key={`${sigil}-${index}`}
+                        animate={{ opacity: [0.4, 1, 0.4], scale: [0.9, 1.1, 0.9] }}
+                        transition={{ duration: 3, repeat: Infinity, delay: index * 0.2 }}
+                      >
+                        {sigil}
+                      </motion.span>
+                    ))
+                  : (
+                    <motion.span
+                      className="opacity-40"
+                      animate={{ opacity: [0.2, 0.5, 0.2] }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                    >
+                      ◦
+                    </motion.span>
+                  )}
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -175,7 +191,7 @@ const Memory = () => {
         <Tabs defaultValue="constellation" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 h-9 sm:h-10">
             <TabsTrigger value="constellation" className="font-mono text-[10px] sm:text-xs">Constellation</TabsTrigger>
-            <TabsTrigger value="archetypes" className="font-mono text-[10px] sm:text-xs">Archetypes</TabsTrigger>
+            <TabsTrigger value="signatures" className="font-mono text-[10px] sm:text-xs">Signatures</TabsTrigger>
             <TabsTrigger value="export" className="font-mono text-[10px] sm:text-xs">Export</TabsTrigger>
           </TabsList>
 
@@ -185,8 +201,8 @@ const Memory = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="archetypes">
-            <ArchetypeInsight />
+          <TabsContent value="signatures">
+            <SignatureReveal />
           </TabsContent>
 
           <TabsContent value="export">

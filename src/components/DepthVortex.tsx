@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
 import { getArchitectureColors } from '@/lib/narrativeEngine';
 
 interface DepthVortexProps {
@@ -10,12 +10,34 @@ interface DepthVortexProps {
 export const DepthVortex = ({ stage, phase }: DepthVortexProps) => {
   const [colors] = useState(() => getArchitectureColors(phase));
   const [rotation, setRotation] = useState(0);
+  const [pulse, setPulse] = useState(false);
+  const pulseTimeout = useRef<number>();
 
   useEffect(() => {
     const interval = setInterval(() => {
       setRotation((prev) => (prev + 0.5) % 360);
     }, 50);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const listener = () => {
+      if (pulseTimeout.current) {
+        window.clearTimeout(pulseTimeout.current);
+      }
+      setPulse(true);
+      pulseTimeout.current = window.setTimeout(() => setPulse(false), 900);
+    };
+
+    window.addEventListener('recursor-branch-pulse', listener);
+    return () => {
+      window.removeEventListener('recursor-branch-pulse', listener);
+      if (pulseTimeout.current) {
+        window.clearTimeout(pulseTimeout.current);
+      }
+    };
   }, []);
 
   // No vortex until stage 1
@@ -31,12 +53,12 @@ export const DepthVortex = ({ stage, phase }: DepthVortexProps) => {
       <motion.div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
         animate={{
-          scale: [1, 1.2, 1],
-          opacity: [opacity, opacity * 1.5, opacity],
+          scale: pulse ? [1.05, 1.3, 0.95] : [1, 1.2, 1],
+          opacity: pulse ? [opacity * 2.2, opacity * 0.6, opacity] : [opacity, opacity * 1.5, opacity],
         }}
         transition={{
-          duration: 8,
-          repeat: Infinity,
+          duration: pulse ? 1.2 : 8,
+          repeat: pulse ? 0 : Infinity,
           ease: 'easeInOut',
         }}
         style={{
@@ -45,6 +67,25 @@ export const DepthVortex = ({ stage, phase }: DepthVortexProps) => {
           background: `radial-gradient(circle, ${colors[0]}15 0%, transparent 60%)`,
         }}
       />
+
+      {/* Branch pulse glyph */}
+      <AnimatePresence>
+        {pulse && (
+          <motion.div
+            key="branch-pulse"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/30"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: [0.8, 0], scale: [0.8, 1.6] }}
+            exit={{ opacity: 0, scale: 2 }}
+            transition={{ duration: 0.9, ease: 'easeOut' }}
+            style={{
+              width: '60vmax',
+              height: '60vmax',
+              boxShadow: `0 0 80px ${colors[0]}60`,
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Rotating rings */}
       {Array.from({ length: ringCount }).map((_, i) => (

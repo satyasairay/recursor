@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PatternGrid } from './PatternGrid';
+import { PatternField } from './PatternField';
 import { RecursionPortal } from './RecursionPortal';
 import { ReflectionModal } from './ReflectionModal';
 import { db, evolvePattern, calculateDecayFactor, createMemoryNode, decayAllNodes } from '@/lib/recursionDB';
@@ -16,6 +17,8 @@ import { cloudSync } from '@/lib/cloudSync';
 import { useAuth } from '@/hooks/useAuth';
 
 export const RecursiveEngine = () => {
+  const useAbstractField = (import.meta.env?.VITE_ABSTRACT_FIELD ?? 'true') !== 'false';
+  const PatternSurface = useAbstractField ? PatternField : PatternGrid;
   const [depth, setDepth] = useState(0);
   const [pattern, setPattern] = useState<Pattern>(INITIAL_PATTERN);
   const [sessionStart, setSessionStart] = useState(Date.now());
@@ -37,6 +40,30 @@ export const RecursiveEngine = () => {
   
   // Cryptic message system
   const crypticMessage = useCrypticMessages(totalMutations);
+
+  const analysis = useMemo(() => analyzePattern(pattern, depth, 1.0), [pattern, depth]);
+  const sessionSignature = useMemo(() => computeSignature(pattern), [pattern]);
+  const metrics = useMemo(
+    () => [
+      { label: 'DEPTH', value: depth.toString().padStart(2, '0'), emphasis: clamp(depth / 12, 0, 1) },
+      { label: 'RESONANCE', value: formatValue(analysis.normalizedEntropy), emphasis: clamp(analysis.normalizedEntropy, 0, 1) },
+      { label: 'CHAOS', value: formatValue(analysis.mutationWeights.chaos), emphasis: clamp(analysis.mutationWeights.chaos, 0, 1) },
+      { label: 'SIGNATURE', value: formatSignature(sessionSignature), emphasis: ((sessionSignature % 37) / 37) },
+    ],
+    [depth, analysis, sessionSignature]
+  );
+  const contours = useMemo(() => {
+    const layers = 5;
+    return Array.from({ length: layers }).map((_, index) => {
+      const phase = (sessionSignature % 97) + index * 17;
+      return {
+        id: index,
+        rotation: (depth * 11 + phase * 0.85) % 360,
+        scale: 1 + index * 0.14,
+        opacity: 0.05 + index * 0.07,
+      };
+    });
+  }, [sessionSignature, depth]);
 
   useEffect(() => {
     if (user) {
@@ -129,6 +156,9 @@ export const RecursiveEngine = () => {
 
     // Enable branching every 3 depths
     const enableBranching = (depth + 1) % 3 === 0 && depth > 0;
+    if (enableBranching && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('recursor-branch-pulse'));
+    }
 
     // Evolve pattern using sophisticated mutation engine
     const evolved = await evolvePattern(pattern, depth, enableBranching);
@@ -147,7 +177,7 @@ export const RecursiveEngine = () => {
     setTotalMutations(m => m + 1);
     
     // Trigger environmental pulse
-    setEnvPulse(Date.now());
+    setEnvPulse(value => value + 1);
 
     // Create memory node for this pattern change
     if (sessionId) {
@@ -232,36 +262,6 @@ export const RecursiveEngine = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 relative">
-      {/* Depth indicator with mutation stats */}
-      <motion.div
-        className="absolute top-4 left-4 sm:top-8 sm:left-8 font-mono text-[10px] sm:text-xs text-muted-foreground space-y-1"
-        animate={{ 
-          opacity: envPulse > 0 ? [0.5, 1, 0.5] : [0.5, 1, 0.5],
-          scale: envPulse > 0 ? [1, 1.05, 1] : 1,
-        }}
-        transition={{ duration: envPulse > 0 ? 0.5 : 3, repeat: envPulse > 0 ? 0 : Infinity }}
-      >
-        <div>DEPTH: {depth}</div>
-        {depth > 0 && (() => {
-          const analysis = analyzePattern(pattern, depth, 1.0);
-          return (
-            <>
-              <motion.div 
-                className="text-[8px] sm:text-[10px] opacity-70 hidden sm:block"
-                animate={envPulse > 0 ? { 
-                  opacity: [0.7, 1, 0.7],
-                } : {}}
-                transition={{ duration: 0.3 }}
-              >
-                ENTROPY: {analysis.normalizedEntropy.toFixed(2)} | 
-                CLUSTERS: {analysis.clusterCount} | 
-                CHAOS: {(analysis.mutationWeights.chaos * 100).toFixed(0)}%
-              </motion.div>
-            </>
-          );
-        })()}
-      </motion.div>
-
       {/* Audio + Reset controls */}
       <motion.div
         className="absolute top-4 right-4 sm:top-8 sm:right-8 flex gap-2"
@@ -289,6 +289,31 @@ export const RecursiveEngine = () => {
         )}
       </motion.div>
 
+      {/* Metric overlay */}
+      <motion.div
+        className="absolute top-4 left-4 sm:top-8 sm:left-8 px-3 sm:px-4 py-2.5 sm:py-3 border border-primary/10 bg-background/60 backdrop-blur-xl rounded-lg shadow-sm max-w-[220px]"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {metrics.map(metric => {
+          const duration = 4 + metric.emphasis * 2;
+          return (
+            <div key={metric.label} className="flex items-center justify-between gap-4">
+              <span className="font-mono text-[10px] tracking-[0.32em] text-muted-foreground/80">
+                {metric.label}
+              </span>
+              <motion.span
+                className="font-mono text-xs text-primary"
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                {metric.value}
+              </motion.span>
+            </div>
+          );
+        })}
+      </motion.div>
+
       {/* Main content area */}
       <div className="relative w-full max-w-2xl">
         <AnimatePresence mode="wait">
@@ -307,27 +332,6 @@ export const RecursiveEngine = () => {
                 isActive={!isTransitioning}
               />
 
-              {depth > 0 && (() => {
-                const analysis = analyzePattern(pattern, depth, 1.0);
-                const willBranch = (depth + 1) % 3 === 0;
-                return (
-                  <motion.div
-                    className="text-center space-y-2"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <div className="text-muted-foreground font-mono text-sm">
-                      Pattern complete. Descend deeper?
-                    </div>
-                    {willBranch && (
-                      <div className="text-primary font-mono text-xs">
-                        ⚠ BRANCHING POINT DETECTED ⚠
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })()}
             </motion.div>
           ) : (
             <motion.div
@@ -339,7 +343,7 @@ export const RecursiveEngine = () => {
               className="flex flex-col items-center gap-8"
             >
               <div className="relative">
-                <PatternGrid
+                <PatternSurface
                   pattern={pattern}
                   onPatternChange={handlePatternChange}
                   depth={depth}
@@ -378,45 +382,45 @@ export const RecursiveEngine = () => {
         />
       )}
 
-      {/* Ambient particle effect with mutation pulse */}
+      {/* Deterministic ambient field */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(30)].map((_, i) => (
+        {contours.map(contour => (
           <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full"
+            key={`contour-${contour.id}`}
+            className="absolute inset-[15%] border border-primary/15 rounded-[40%]"
             style={{
-              background: `hsl(${180 + depth * 30}, 70%, 45%)`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              boxShadow: `0 0 10px hsl(${180 + depth * 30}, 70%, 45%)`,
+              transform: `rotate(${contour.rotation}deg) scale(${contour.scale})`,
             }}
             animate={{
-              y: [0, -120, 0],
-              opacity: [0, 0.8, 0],
-              scale: envPulse > 0 ? [1, 2.5, 0] : [0, 1.2, 0],
+              opacity: [0, contour.opacity, 0],
             }}
             transition={{
-              duration: 6 + Math.random() * 4,
+              duration: 8 + contour.id * 2,
               repeat: Infinity,
-              delay: Math.random() * 6,
               ease: 'easeInOut',
             }}
           />
         ))}
-        
-        {/* Constellation drift pulse on mutation */}
+        <motion.div
+          className="absolute inset-0"
+          animate={{ opacity: [0.12, 0.22, 0.12] }}
+          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+          style={{
+            background: `radial-gradient(circle at 50% 50%, hsla(${210 + analysis.mutationWeights.strength * 40}, 50%, 18%, 0.55) 0%, transparent 68%)`,
+          }}
+        />
         {envPulse > 0 && (
           <motion.div
             key={envPulse}
             className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: [0, 0.3, 0],
-              scale: [0.9, 1.05, 1],
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{
+              opacity: [0, 0.35, 0],
+              scale: [0.92, 1.05, 1],
             }}
-            transition={{ duration: 1.5 }}
+            transition={{ duration: 1.6, ease: 'easeInOut' }}
             style={{
-              background: `radial-gradient(circle at center, hsl(${180 + depth * 30}, 70%, 20%) 0%, transparent 70%)`,
+              background: `radial-gradient(circle at center, hsla(${180 + depth * 18}, 70%, 22%, 0.45) 0%, transparent 72%)`,
             }}
           />
         )}
@@ -424,3 +428,20 @@ export const RecursiveEngine = () => {
     </div>
   );
 };
+
+function computeSignature(pattern: Pattern): number {
+  return pattern.reduce((sum, value, index) => sum + (value + 1) * (index + 1), 0);
+}
+
+function formatValue(value: number): string {
+  return value.toFixed(2);
+}
+
+function formatSignature(value: number): string {
+  const hex = Math.abs(value).toString(16).toUpperCase();
+  return hex.slice(-6).padStart(6, '0');
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
